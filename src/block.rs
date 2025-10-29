@@ -6,7 +6,7 @@ pub trait ChainBlock<T> {
     fn mine_block(data: Vec<String>, last_block: &T) -> T;
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Block {
     pub timestamp: i64,
     pub last_hash: Vec<u8>,

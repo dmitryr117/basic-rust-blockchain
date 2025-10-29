@@ -1,4 +1,4 @@
-mod config;
-mod block;
-mod chain;
-mod crypto_hash;
+pub mod config;
+pub mod block;
+pub mod blockchain;
+pub mod crypto_hash;
