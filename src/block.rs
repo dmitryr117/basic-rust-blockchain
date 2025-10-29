@@ -32,10 +32,10 @@ impl ChainBlock<Block> for Block {
     }
 
     fn mine_block(data: Vec<String>, last_block: &Block) -> Block {
-        let nanos = Utc::now().timestamp_nanos_opt().unwrap();
+        let nano_time = Utc::now().timestamp_nanos_opt().unwrap();
         let last_hash = hex::encode(&last_block.hash);
-        let new_hash = cryptohash(&data, &last_hash, nanos);
-        Self::new(nanos, last_block.hash.clone(), new_hash, data)
+        let new_hash = cryptohash(&data, &last_hash, nano_time);
+        Self::new(nano_time, last_block.hash.clone(), new_hash, data)
     }
 }
 
@@ -86,12 +86,10 @@ mod tests {
 
         assert_eq!(last_block.hash, mined_block.last_hash);
         assert_eq!(vec![String::from("Mined Data")], mined_block.data);
-
-        println!("{mined_block:#?}");
     }
 
     #[test]
-    fn test_sha256_by_inputs() {
+    fn test_black_data_sorting() {
         let mut data = vec!["bcd", "cdf", "abc"];
         data.sort();
         let data: Vec<String> = data.iter().map(|item| item.to_string()).collect();

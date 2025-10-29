@@ -1,13 +1,42 @@
 {
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+    
     {
-      "name": "Run Tests",
+      "name": "Debug unit tests in library 'cryptochain'",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/target/debug/deps/cryptochain-{hash}",
-      "args": ["--nocapture"],
-      "cwd": "${workspaceFolder}"
+      "cargo": {
+        "args": [
+          "test"
+        ]
+      }
+    },
+    {
+      "name": "Debug executable 'cryptochain'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "run",
+          "--bin=cryptochain"
+        ]
+      },
+      "args": []
+    },
+    {
+      "name": "Debug unit tests in executable 'cryptochain'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "test",
+          "--bin=cryptochain"
+        ]
+      }
     }
   ]
 }

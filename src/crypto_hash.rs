@@ -5,7 +5,6 @@ pub fn cryptohash(data: &Vec<String>, last_hash: &str, timestamp: i64) -> Vec<u8
   let mut hasher = Sha3_256::new();
   let data = data.join(":");
   let new_data = format!("{data}:{last_hash}:{timestamp}");
-  println!("{new_data}");
   hasher.update(new_data);
   hasher.finalize().to_vec()
 }

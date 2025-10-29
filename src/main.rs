@@ -1,8 +1,4 @@
-mod block;
-mod config;
-mod crypto_hash;
-
-use block::Block;
+use cryptochain;
 
 fn main() {
     println!("Hello, world!");
