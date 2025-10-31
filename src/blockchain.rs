@@ -32,16 +32,19 @@ impl Blockchain {
 				continue;
 			}
 			let block = chain.get(idx).unwrap();
-			let (timestamp, last_hash, hash, data) =
-				(block.timestamp, &block.last_hash, &block.hash, &block.data);
-			let actual_last_hash = &chain.get(idx - 1).unwrap().hash;
+			let (timestamp, last_hash, hash, data, nonce) =
+				(block.timestamp, &block.last_hash, &block.hash, &block.data, block.nonce);
+			
+			let last_block = chain.get(idx - 1).unwrap();
+			let actual_last_hash = &last_block.hash;
+			let difficulty = last_block.difficulty;
 
 			if actual_last_hash != last_hash {
 				return false;
 			}
 
 			let last_hash = hex::encode(last_hash);
-			let validated_hash = cryptohash(data, &last_hash, timestamp);
+			let validated_hash = cryptohash(data, &last_hash, timestamp, nonce, difficulty);
 
 			if *hash != validated_hash {
 				return false;
