@@ -1,5 +1,5 @@
 use crate::{
-	block::{Block, ChainBlock},
+	block::{Block, BlockTr},
 	crypto_hash::cryptohash,
 };
 

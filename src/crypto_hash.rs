@@ -1,6 +1,6 @@
 use sha3::{Digest, Sha3_256};
 
-pub fn cryptohash(data: &Vec<String>, last_hash: &str, timestamp: i64, nonce: usize, difficulty: usize) -> Vec<u8> {
+pub fn cryptohash(data: &[String], last_hash: &str, timestamp: usize, nonce: usize, difficulty: usize) -> Vec<u8> {
 	let mut hasher = Sha3_256::new();
 	let data = data.join(":");
 	let new_data = format!("{data}:{last_hash}:{timestamp}:{nonce}:{difficulty}");
