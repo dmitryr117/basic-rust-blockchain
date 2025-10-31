@@ -1,4 +1,9 @@
 {
   "rust-analyzer.checkOnSave": true,
-  "debug.allowBreakpointsEverywhere": true
+  "debug.allowBreakpointsEverywhere": true,
+  "[rust]": {
+    "editor.insertSpaces": false,
+    "editor.detectIndentation": false,
+    "editor.tabSize": 4
+  }
 }
