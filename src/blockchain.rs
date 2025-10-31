@@ -32,14 +32,15 @@ impl Blockchain {
 				continue;
 			}
 			let block = chain.get(idx).unwrap();
-			let (timestamp, last_hash, hash, data, nonce) =
-				(block.timestamp, &block.last_hash, &block.hash, &block.data, block.nonce);
+			let (timestamp, last_hash, hash, data, nonce, difficulty) =
+				(block.timestamp, &block.last_hash, &block.hash, &block.data, block.nonce, block.difficulty);
 			
 			let last_block = chain.get(idx - 1).unwrap();
 			let actual_last_hash = &last_block.hash;
-			let difficulty = last_block.difficulty;
+			
+			let difficulty_delta = last_block.difficulty.abs_diff(difficulty);
 
-			if actual_last_hash != last_hash {
+			if actual_last_hash != last_hash || difficulty_delta > 1 {
 				return false;
 			}
 

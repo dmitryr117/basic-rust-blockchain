@@ -1,7 +1,10 @@
 use std::usize;
 
 use crate::{
-	config::{GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH, GENESIS_NONCE, GENESIS_TS, MINE_RATE, MINE_RATE_DELTA},
+	config::{
+		GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH, GENESIS_NONCE,
+		GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
+	},
 	crypto_hash::cryptohash,
 };
 use chrono::Utc;
@@ -16,7 +19,6 @@ pub trait BlockTr<T> {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Block {
 	pub timestamp: usize,
-	pub start_hash: Option<Vec<u8>>,
 	pub last_hash: Vec<u8>,
 	pub hash: Vec<u8>,
 	pub data: Vec<String>,
@@ -34,7 +36,6 @@ impl Block {
 		difficulty: usize,
 	) -> Self {
 		Self {
-			start_hash: None,
 			timestamp,
 			last_hash,
 			hash,
@@ -69,14 +70,21 @@ impl BlockTr<Block> for Block {
 			nonce += 1;
 			ms_time = Utc::now().timestamp_millis() as usize;
 			new_hash = cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
-			let sector = new_hash.get(0..difficulty).unwrap();
-			let comparator: Vec<u8> = vec![0; difficulty as usize];
+			// let sector = new_hash.get(0..difficulty).unwrap();
+			// let comparator: Vec<u8> = vec![0; difficulty as usize];
 
-			if sector == comparator {
+			if Self::is_valid_bit_hash(&new_hash, difficulty) {
 				break;
 			}
 		}
-		Self::new(ms_time, last_block.hash.clone(), new_hash, data, nonce, difficulty)
+		Self::new(
+			ms_time,
+			last_block.hash.clone(),
+			new_hash,
+			data,
+			nonce,
+			difficulty,
+		)
 	}
 
 	fn adjust_difficulty(last_block: &Block, ms_time: usize) -> usize {
@@ -85,16 +93,20 @@ impl BlockTr<Block> for Block {
 		if diff > MINE_RATE + MINE_RATE_DELTA {
 			// decrease difficulty
 			new_difficulty = last_block.difficulty - 1;
-		} else if diff < MINE_RATE - MINE_RATE_DELTA  {
+		} else if diff < MINE_RATE - MINE_RATE_DELTA {
 			// increase difficulty
 			new_difficulty = last_block.difficulty + 1;
 		} else {
 			// keep difficulty the same
 			new_difficulty = last_block.difficulty;
 		}
-		
+
 		// check new difficulty not less then 1
-		new_difficulty = if new_difficulty < 1 { 1 } else { new_difficulty };
+		new_difficulty = if new_difficulty < 1 {
+			1
+		} else {
+			new_difficulty
+		};
 		new_difficulty
 	}
 
@@ -103,7 +115,7 @@ impl BlockTr<Block> for Block {
 		let bits = difficulty % 8;
 
 		// check full zero bytes
-		if hash.iter().take(full_bytes).any(|&b|{b != 0}) {
+		if hash.iter().take(full_bytes).any(|&b| b != 0) {
 			return false;
 		}
 
@@ -111,7 +123,7 @@ impl BlockTr<Block> for Block {
 			if let Some(&byte) = hash.get(full_bytes) {
 				let mask = 0xFFu8 << (8 - bits);
 				if byte & mask != 0 {
-					return false
+					return false;
 				}
 			}
 		}
@@ -122,8 +134,8 @@ impl BlockTr<Block> for Block {
 
 #[cfg(test)]
 mod tests {
-	use crate::config::{GENESIS_NONCE, MINE_RATE};
 	use super::*;
+	use crate::{blockchain::{Blockchain}, config::{GENESIS_NONCE, MINE_RATE}};
 	use pretty_assertions::assert_eq;
 
 	#[test]
@@ -143,7 +155,6 @@ mod tests {
 		);
 
 		let comp_block = Block {
-			start_hash: None,
 			timestamp,
 			last_hash,
 			hash,
@@ -161,7 +172,6 @@ mod tests {
 
 		let genesis_data = GENESIS_DATA.iter().map(|item| item.to_string()).collect();
 		let comp_block = Block {
-			start_hash: None,
 			timestamp: GENESIS_TS,
 			last_hash: GENESIS_LAST_HASH.to_vec(),
 			hash: GENESIS_HASH.to_vec(),
@@ -194,11 +204,12 @@ mod tests {
 
 		// -------------- Need to adjust this to work with bit zeros instead of byte zeros.
 		let difficulty = mined_block.difficulty as usize;
-		let sector = mined_block.hash.get(0..difficulty).unwrap();
+		// let sector = mined_block.hash.get(0..difficulty).unwrap();
+		// let comparator: Vec<u8> = vec![0; difficulty as usize];
+		let is_valid = Block::is_valid_bit_hash(&mined_block.hash, difficulty);
 
-		let comparator: Vec<u8> = vec![0; difficulty as usize];
-
-		assert_eq!(sector, comparator);
+		// assert_eq!(sector, comparator);
+		assert_eq!(is_valid, true);
 	}
 
 	#[test]
@@ -252,7 +263,6 @@ mod tests {
 	fn valid_bit_hash_true_full_bytes() {
 		let hash: i32 = 0x0000ffff;
 		let bytes = hash.to_be_bytes();
-		println!("bytes: {bytes:?}");
 		let is_valid = Block::is_valid_bit_hash(&bytes, 16);
 		assert_eq!(is_valid, true);
 	}
@@ -261,7 +271,6 @@ mod tests {
 	fn valid_bit_hash_partial_false() {
 		let hash: i32 = 0x0002ffff;
 		let bytes = hash.to_be_bytes();
-		println!("bytes: {bytes:?}");
 		let is_valid = Block::is_valid_bit_hash(&bytes, 15);
 		assert_eq!(is_valid, false);
 	}
@@ -270,9 +279,27 @@ mod tests {
 	fn valid_bit_hash_partial_true() {
 		let hash: i32 = 0x0001ffff;
 		let bytes = hash.to_be_bytes();
-		println!("bytes: {bytes:?}");
 		let is_valid = Block::is_valid_bit_hash(&bytes, 15);
 		assert_eq!(is_valid, true);
 	}
 
+	#[test]
+	fn jumped_difficulty() {
+		let mut blockchain = Blockchain::new();
+
+		let (genesis_block, _) = init_mined_block();
+
+		let last_hash_hex = hex::encode(&genesis_block.hash);
+		let timestamp = Utc::now().timestamp_millis() as usize;
+		let data: Vec<String> = vec![String::from("test")];
+		let nonce = 0;
+		let difficulty = 1;
+
+		let new_hash = cryptohash(&data, &last_hash_hex, timestamp, nonce, difficulty);
+		let bad_block = Block::new(timestamp, genesis_block.hash.clone(), new_hash, data, nonce, difficulty);
+		blockchain.chain.push(bad_block);
+
+		let is_valid = Blockchain::is_valid_chain(&blockchain.chain);
+		assert_eq!(is_valid, false);
+	}
 }
