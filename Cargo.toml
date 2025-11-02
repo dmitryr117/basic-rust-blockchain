@@ -4,10 +4,31 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = "0.8.6"
 chrono = { version = "0.4", features = ["serde"] }
+either = "1.15.0"
+futures = "0.3.31"
 hex = "0.4.3"
 hex-literal = "1.0.0"
+libp2p = { version = "0.56.0", features = [
+  "tokio",
+  "gossipsub",
+  "dns",
+  "identify",
+  "kad",
+  "macros",
+  "noise",
+  "ping",
+  "pnet",
+  "tcp",
+  "websocket",
+  "yamux",
+  "mdns",
+  "quic",
+] }
 sha3 = "0.10.8"
+tokio = "1.48.0"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
