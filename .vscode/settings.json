@@ -1,9 +1,12 @@
 {
   "rust-analyzer.checkOnSave": true,
-  "debug.allowBreakpointsEverywhere": true,
+  "editor.formatOnSave": true,
   "[rust]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.insertSpaces": false,
-    "editor.detectIndentation": false,
+    "editor.detectIndentation": true,
     "editor.tabSize": 4
-  }
+  },
+  "debug.allowBreakpointsEverywhere": true
 }

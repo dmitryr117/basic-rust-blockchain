@@ -1,6 +1,5 @@
 // To run: cargo run --bin cryptochain
 
-use cryptochain;
 
 fn main() {
 	println!("Hello, world!");

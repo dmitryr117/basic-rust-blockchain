@@ -24,11 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// 4. Create communication swarm.
 	let mut swarm = SwarmBuilder::with_existing_identity(keypair.clone())
 		.with_tokio()
-		.with_tcp(
-			tcp::Config::default(),
-			tls::Config::new,
-			yamux::Config::default,
-		)?
+		.with_tcp(tcp::Config::default(), tls::Config::new, yamux::Config::default)?
 		.with_behaviour(|_key| Ok(gossip_sub))?
 		.with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
 		.build();

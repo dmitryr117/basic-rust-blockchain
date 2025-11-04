@@ -1,3 +1,6 @@
+/**
+ * This is a test program to check MDNS peer detection, connection, and TX / RX
+ */
 use futures::StreamExt;
 use libp2p::{PeerId, SwarmBuilder, gossipsub, mdns, swarm::SwarmEvent, tcp, tls, yamux};
 use std::time::Duration;
@@ -33,18 +36,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// 4. Create communication swarm.
 	let mut swarm = SwarmBuilder::with_existing_identity(keypair.clone())
 		.with_tokio()
-		.with_tcp(
-			tcp::Config::default(),
-			tls::Config::new,
-			yamux::Config::default,
-		)?
+		.with_tcp(tcp::Config::default(), tls::Config::new, yamux::Config::default)?
 		.with_quic()
-		.with_behaviour(|_key| {
-			Ok(MyBehaviour {
-				gossipsub: gossip_sub,
-				mdns,
-			})
-		})?
+		.with_behaviour(|_key| Ok(MyBehaviour { gossipsub: gossip_sub, mdns }))?
 		.with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
 		.build();
 
@@ -132,7 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 					SwarmEvent::ConnectionEstablished { peer_id, .. } => {
 						// peer deduplication
 						let count = connected_peers.entry(peer_id).and_modify(|c| *c += 1).or_insert(1);
-    
+
 						if *count == 1 {
 							println!("* New peer: {} ({} unique peers)", peer_id, connected_peers.len());
 						} else {

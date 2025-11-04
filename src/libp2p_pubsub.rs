@@ -1,4 +1,4 @@
-use libp2p::{gossipsub, PeerId};
+use libp2p::{gossipsub};
 use std::error::Error;
 
 pub fn basic_pubsub_example() -> Result<(), Box<dyn Error>> {
@@ -7,10 +7,11 @@ pub fn basic_pubsub_example() -> Result<(), Box<dyn Error>> {
 
 	// 2. Create gossip behavior
 	let gossipsub_config = gossipsub::Config::default();
-	let mut gossipsub: gossipsub::Behaviour<gossipsub::IdentityTransform> = gossipsub::Behaviour::new(
-		gossipsub::MessageAuthenticity::Signed(keypair),
-		gossipsub_config
-	)?;
+	let mut gossipsub: gossipsub::Behaviour<gossipsub::IdentityTransform> =
+		gossipsub::Behaviour::new(
+			gossipsub::MessageAuthenticity::Signed(keypair),
+			gossipsub_config,
+		)?;
 
 	// 3. Create topic and subscribe
 	let topic = gossipsub::IdentTopic::new("test-topic");
