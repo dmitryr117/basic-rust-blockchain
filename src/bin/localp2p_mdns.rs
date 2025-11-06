@@ -48,28 +48,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("=== Chat Node ===");
 	println!("Your ID: {}", peer_id);
 
-	// Get command line arguments to connect peers
-	let args: Vec<String> = std::env::args().collect();
-
-	// Connect to address if provided as argument
-	if args.len() > 1 {
-		let connect_addr = &args[1];
-		println!("Attempting to connect to: {}", connect_addr);
-		if let Ok(addr) = connect_addr.parse::<libp2p::Multiaddr>() {
-			if let Err(e) = swarm.dial(addr) {
-				eprintln!("Failed to dial: {}", e);
-			}
-		} else {
-			eprintln!("Invalid address format: {}", connect_addr);
-		}
-	}
-
 	// Print our addresses for others to connect to
 	tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-	println!("Full addresses to connect to this node:");
-	for addr in swarm.listeners() {
-		println!("  {}/p2p/{}", addr, peer_id);
-	}
 
 	println!("\nType messages to send. 'exit' to quit.");
 	println!("=================\n");
