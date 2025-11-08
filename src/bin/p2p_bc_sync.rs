@@ -31,6 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	 * 7 - get chain replacement from network
 	 * 8 - post chain replacement to network
 	 * 9 - PoW block mining process with rayon for parallel processing.
+	 * 10. - add a global event blocker to prevent from mining anything until required number of blocks has been downloaded into history when the chain is out of sync.
 	 */
 	loop {
 		tokio::select! {
