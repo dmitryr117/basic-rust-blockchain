@@ -23,25 +23,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	loop {
 		tokio::select! {
-			line = stdin.next_line() => {
-				if let Ok(Some(input)) = line {
-					let input = input.trim();
+			// Send blockchain sync event instead of text arg. Need to do some work, and add
 
-					if input == "exit" {
-						break;
-					}
-					let mut swarm = connection.swarm.lock().await;
 
-					if connection.connected_peers.read().await.len() > 0 && !input.is_empty() {
-						match swarm.behaviour_mut().gossipsub.publish(topic.clone(), input.as_bytes()) {
-							Ok(_) => println!("Message sent!"),
-							Err(e) => eprintln!("Failed to send: {}", e),
-						}
-					} else if !input.is_empty() {
-						println!("No connected peers yet. Waiting for automatic discovery...");
-					}
-				}
-			},
+			// line = stdin.next_line() => {
+			// 	if let Ok(Some(input)) = line {
+			// 		let input = input.trim();
+
+			// 		if input == "exit" {
+			// 			break;
+			// 		}
+			// 		let mut swarm = connection.swarm.lock().await;
+
+			// 		if connection.connected_peers.read().await.len() > 0 && !input.is_empty() {
+			// 			match swarm.behaviour_mut().gossipsub.publish(topic.clone(), input.as_bytes()) {
+			// 				Ok(_) => println!("Message sent!"),
+			// 				Err(e) => eprintln!("Failed to send: {}", e),
+			// 			}
+			// 		} else if !input.is_empty() {
+			// 			println!("No connected peers yet. Waiting for automatic discovery...");
+			// 		}
+			// 	}
+			// },
 			event = async {
 				let mut swarm = connection.swarm.lock().await;
 				swarm.select_next_some().await
@@ -52,6 +55,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 					}
 					SwarmEvent::Behaviour(p2p_mdns_singleton::P2PBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
 						let text = String::from_utf8_lossy(&message.data);
+						println!(">! {:#?}", message);
 						println!(">> {}", text);
 					}
 					SwarmEvent::Behaviour(p2p_mdns_singleton::P2PBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
