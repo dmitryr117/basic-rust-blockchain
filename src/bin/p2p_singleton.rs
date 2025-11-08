@@ -3,10 +3,10 @@
  */
 use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
-use std::error::Error;
+use std::{error::Error, str::FromStr};
 use tokio::io::{self, AsyncBufReadExt};
 
-use cryptochain::p2p_mdns_singleton;
+use cryptochain::p2p_mdns_singleton::{self, P2PBehaviourEvent, TopicEnum};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -17,9 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("=================\n");
 
 	let mut stdin = io::BufReader::new(io::stdin()).lines();
-	let topic = gossipsub::IdentTopic::new(
-		p2p_mdns_singleton::TopicEnum::Blockchain.to_string(),
-	);
+	let topic = gossipsub::IdentTopic::new(TopicEnum::Blockchain.to_string());
 
 	loop {
 		tokio::select! {
@@ -50,11 +48,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
 					SwarmEvent::NewListenAddr { address, .. } => {
 						println!("* Listening on: {}", address);
 					}
-					SwarmEvent::Behaviour(p2p_mdns_singleton::P2PBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
+					SwarmEvent::Behaviour(P2PBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
+						println!(">! {:#?}", message);
+
+						let topic: &String = &message.topic.to_string();
 						let text = String::from_utf8_lossy(&message.data);
-						println!(">> {}", text);
+
+						if let Ok(topic_enum) = TopicEnum::from_str(&topic) {
+							match topic_enum {
+								TopicEnum::Blockchain => {
+									// this is where chain replacement is.
+									let text = String::from_utf8_lossy(&message.data);
+									println!(">> {text}");
+								},
+								_ => {
+									println!("Unknown channel message.");
+								}
+							}
+						}
+
+						println!(">! {:#?}", message);
+						println!(">> {}, {}", text, topic);
 					}
-					SwarmEvent::Behaviour(p2p_mdns_singleton::P2PBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+					SwarmEvent::Behaviour(P2PBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
 						let mut swarm = connection.swarm.lock().await;
 						for (peer_id, addr) in list {
 							println!("* Discovered peer: {} at {}", peer_id, addr);

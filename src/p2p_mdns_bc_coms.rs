@@ -1,9 +1,13 @@
+use libp2p::gossipsub::IdentTopic;
+use libp2p::gossipsub::{MessageId, PublishError};
 use libp2p::identity::Keypair;
-use libp2p::{PeerId, Swarm, SwarmBuilder, gossipsub, mdns, tcp, tls, yamux};
+use libp2p::{
+	Multiaddr, PeerId, Swarm, SwarmBuilder, gossipsub, mdns, tcp, tls, yamux,
+};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
-use strum::IntoEnumIterator;
+use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock};
 
@@ -13,7 +17,7 @@ pub struct P2PBehaviour {
 	pub mdns: mdns::tokio::Behaviour,
 }
 
-#[derive(Debug, EnumIter, Display)]
+#[derive(Debug, EnumIter, Display, EnumString)]
 pub enum TopicEnum {
 	#[strum(serialize = "blockchain")]
 	Blockchain,
@@ -94,5 +98,89 @@ impl P2PConnection {
 			swarm: Mutex::new(swarm),
 			connected_peers: RwLock::new(connected_peers),
 		})
+	}
+
+	pub async fn dial_discovered_peers(&self, list: Vec<(PeerId, Multiaddr)>) {
+		let mut swarm = self.swarm.lock().await;
+		for (peer_id, addr) in list {
+			println!("* Discovered peer: {} at {}", peer_id, addr);
+			// Force connection to discovered peer
+			if let Err(e) = swarm.dial(addr) {
+				eprintln!("Failed to connect to {}: {}", peer_id, e);
+			}
+		}
+	}
+
+	pub async fn publish(
+		&self,
+		topic: IdentTopic,
+		input: &[u8],
+	) -> Result<MessageId, PublishError> {
+		let mut swarm = self.swarm.lock().await;
+		swarm
+			.behaviour_mut()
+			.gossipsub
+			.publish(topic.clone(), input)
+	}
+
+	pub async fn add_connected_peer(&self, peer_id: &PeerId) {
+		// peer number deduplication
+		let mut connected_peers = self.connected_peers.write().await;
+		let mut swarm = self.swarm.lock().await;
+		let count = connected_peers
+			.entry(*peer_id)
+			.and_modify(|c| *c += 1)
+			.or_insert(1);
+
+		if *count == 1 {
+			println!(
+				"* New peer: {} ({} unique peers)",
+				peer_id,
+				connected_peers.len()
+			);
+		} else {
+			println!(
+				"* Additional connection to: {} ({} total connections)",
+				peer_id, count
+			);
+		}
+		// IMPORTANT: When we connect to a new peer, make sure gossipsub knows about it
+		// This helps with topic propagation and mesh formation
+		// Add this to all connections, but keep peer itself deduplicated.
+		swarm
+			.behaviour_mut()
+			.gossipsub
+			.add_explicit_peer(&peer_id);
+	}
+
+	pub async fn remove_peer(&self, list: Vec<(PeerId, Multiaddr)>) {
+		let mut connected_peers = self.connected_peers.write().await;
+		for (peer_id, _addr) in list {
+			println!("* Peer removed: {}", peer_id);
+			// connected_peers = connected_peers.saturating_sub(1);
+			connected_peers.remove(&peer_id);
+		}
+	}
+
+	pub async fn closed_connection(&self, peer_id: &PeerId) {
+		let mut connected_peers = self.connected_peers.write().await;
+		// connected_peers = connected_peers.saturating_sub(1);
+		if let Some(count) = connected_peers.get_mut(&peer_id) {
+			*count -= 1;
+			if *count == 0 {
+				connected_peers.remove(&peer_id);
+				println!(
+					"Peer disconnected: {} ({} peers left)",
+					peer_id,
+					connected_peers.len()
+				);
+			} else {
+				println!("Connection closed: {} ({} remain)", peer_id, count);
+			}
+		}
+	}
+
+	pub async fn get_connected_peers_len(&self) -> usize {
+		self.connected_peers.read().await.len()
 	}
 }

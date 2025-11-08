@@ -3,7 +3,7 @@ use libp2p::{PeerId, Swarm, SwarmBuilder, gossipsub, mdns, tcp, tls, yamux};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
-use strum::IntoEnumIterator;
+use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock};
 
@@ -13,7 +13,7 @@ pub struct P2PBehaviour {
 	pub mdns: mdns::tokio::Behaviour,
 }
 
-#[derive(Debug, EnumIter, Display)]
+#[derive(Debug, EnumIter, Display, EnumString)]
 pub enum TopicEnum {
 	#[strum(serialize = "blockchain")]
 	Blockchain,
@@ -33,7 +33,10 @@ impl P2PConnection {
 		static INSTANCE: OnceCell<Arc<P2PConnection>> = OnceCell::const_new();
 		INSTANCE
 			.get_or_init(|| async {
-				P2PConnection::new().await.map(Arc::new).expect("Failed to init P2P")
+				P2PConnection::new()
+					.await
+					.map(Arc::new)
+					.expect("Failed to init P2P")
 			})
 			.await
 			.clone()
@@ -57,16 +60,27 @@ impl P2PConnection {
 			gossip_sub.subscribe(&topic)?;
 		}
 
-		let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
-		println!("* MDNS discovery enabled - will automatically find local peers");
+		let mdns =
+			mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
+		println!(
+			"* MDNS discovery enabled - will automatically find local peers"
+		);
 
 		// 4. Create communication swarm.
 		let mut swarm = SwarmBuilder::with_existing_identity(keypair.clone())
 			.with_tokio()
-			.with_tcp(tcp::Config::default(), tls::Config::new, yamux::Config::default)?
+			.with_tcp(
+				tcp::Config::default(),
+				tls::Config::new,
+				yamux::Config::default,
+			)?
 			.with_quic()
-			.with_behaviour(|_key| Ok(P2PBehaviour { gossipsub: gossip_sub, mdns }))?
-			.with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
+			.with_behaviour(|_key| {
+				Ok(P2PBehaviour { gossipsub: gossip_sub, mdns })
+			})?
+			.with_swarm_config(|cfg| {
+				cfg.with_idle_connection_timeout(Duration::from_secs(60))
+			})
 			.build();
 
 		swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
