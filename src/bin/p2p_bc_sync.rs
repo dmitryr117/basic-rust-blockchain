@@ -19,6 +19,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let mut stdin = io::BufReader::new(io::stdin()).lines();
 	let topic = gossipsub::IdentTopic::new(TopicEnum::Blockchain.to_string());
 
+	/*
+	 * In loop have to do a few concurrent things.
+	 * later also have to refactor all this into separate concurrent async functions inside main application loop.
+	 * 1 - get new blocks from network
+	 * 2 - post new blocks to network
+	 * 3 - get verification of block from network
+	 * 4 - post verification of block to network (may include rayon to spawn parallel process for block validation)
+	 * 5 - get transactions from network.
+	 * 6 - post transactions to network
+	 * 7 - get chain replacement from network
+	 * 8 - post chain replacement to network
+	 * 9 - PoW block mining process with rayon for parallel processing.
+	 */
 	loop {
 		tokio::select! {
 			// Send blockchain sync event instead of text arg. Need to do some work, and add
