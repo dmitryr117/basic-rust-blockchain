@@ -68,8 +68,6 @@ impl BlockTr<Block> for Block {
 			ms_time = Utc::now().timestamp_millis() as usize;
 			new_hash =
 				cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
-			// let sector = new_hash.get(0..difficulty).unwrap();
-			// let comparator: Vec<u8> = vec![0; difficulty as usize];
 
 			if Self::is_valid_bit_hash(&new_hash, difficulty) {
 				break;
