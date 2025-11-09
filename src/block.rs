@@ -1,9 +1,10 @@
+use bincode::{Decode, Encode};
 use std::usize;
 
 use crate::{
 	config::{
-		GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH, GENESIS_NONCE,
-		GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
+		GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH,
+		GENESIS_NONCE, GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
 	},
 	crypto_hash::cryptohash,
 };
@@ -16,7 +17,7 @@ pub trait BlockTr<T> {
 	fn is_valid_bit_hash(hash: &[u8], difficulty: usize) -> bool;
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct Block {
 	pub timestamp: usize,
 	pub last_hash: Vec<u8>,
@@ -35,20 +36,16 @@ impl Block {
 		nonce: usize,
 		difficulty: usize,
 	) -> Self {
-		Self {
-			timestamp,
-			last_hash,
-			hash,
-			data,
-			nonce,
-			difficulty,
-		}
+		Self { timestamp, last_hash, hash, data, nonce, difficulty }
 	}
 }
 
 impl BlockTr<Block> for Block {
 	fn genesis() -> Self {
-		let data = GENESIS_DATA.iter().map(|item| item.to_string()).collect();
+		let data = GENESIS_DATA
+			.iter()
+			.map(|item| item.to_string())
+			.collect();
 		Self::new(
 			GENESIS_TS,
 			GENESIS_LAST_HASH.to_vec(),
@@ -69,7 +66,8 @@ impl BlockTr<Block> for Block {
 		loop {
 			nonce += 1;
 			ms_time = Utc::now().timestamp_millis() as usize;
-			new_hash = cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
+			new_hash =
+				cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
 			// let sector = new_hash.get(0..difficulty).unwrap();
 			// let comparator: Vec<u8> = vec![0; difficulty as usize];
 
@@ -88,7 +86,8 @@ impl BlockTr<Block> for Block {
 	}
 
 	fn adjust_difficulty(last_block: &Block, ms_time: usize) -> usize {
-		let diff = (last_block.timestamp as isize - ms_time as isize).abs() as usize;
+		let diff =
+			(last_block.timestamp as isize - ms_time as isize).abs() as usize;
 		let mut new_difficulty: usize;
 		if diff > MINE_RATE + MINE_RATE_DELTA {
 			// decrease difficulty
@@ -102,11 +101,7 @@ impl BlockTr<Block> for Block {
 		}
 
 		// check new difficulty not less then 1
-		new_difficulty = if new_difficulty < 1 {
-			1
-		} else {
-			new_difficulty
-		};
+		new_difficulty = if new_difficulty < 1 { 1 } else { new_difficulty };
 		new_difficulty
 	}
 
@@ -135,7 +130,10 @@ impl BlockTr<Block> for Block {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::{blockchain::{Blockchain}, config::{GENESIS_NONCE, MINE_RATE}};
+	use crate::{
+		blockchain::Blockchain,
+		config::{GENESIS_NONCE, MINE_RATE},
+	};
 	use pretty_assertions::assert_eq;
 
 	#[test]
@@ -154,14 +152,8 @@ mod tests {
 			1,
 		);
 
-		let comp_block = Block {
-			timestamp,
-			last_hash,
-			hash,
-			data,
-			nonce: 1,
-			difficulty: 1,
-		};
+		let comp_block =
+			Block { timestamp, last_hash, hash, data, nonce: 1, difficulty: 1 };
 
 		assert_eq!(new_block, comp_block);
 	}
@@ -170,7 +162,10 @@ mod tests {
 	fn test_genesis() {
 		let genesis_block = Block::genesis();
 
-		let genesis_data = GENESIS_DATA.iter().map(|item| item.to_string()).collect();
+		let genesis_data = GENESIS_DATA
+			.iter()
+			.map(|item| item.to_string())
+			.collect();
 		let comp_block = Block {
 			timestamp: GENESIS_TS,
 			last_hash: GENESIS_LAST_HASH.to_vec(),
@@ -216,12 +211,10 @@ mod tests {
 	fn test_black_data_sorting() {
 		let mut data = vec!["bcd", "cdf", "abc"];
 		data.sort();
-		let data: Vec<String> = data.iter().map(|item| item.to_string()).collect();
-		let expected = vec![
-			String::from("abc"),
-			String::from("bcd"),
-			String::from("cdf"),
-		];
+		let data: Vec<String> =
+			data.iter().map(|item| item.to_string()).collect();
+		let expected =
+			vec![String::from("abc"), String::from("bcd"), String::from("cdf")];
 		assert_eq!(expected, data);
 	}
 
@@ -295,8 +288,16 @@ mod tests {
 		let nonce = 0;
 		let difficulty = 1;
 
-		let new_hash = cryptohash(&data, &last_hash_hex, timestamp, nonce, difficulty);
-		let bad_block = Block::new(timestamp, genesis_block.hash.clone(), new_hash, data, nonce, difficulty);
+		let new_hash =
+			cryptohash(&data, &last_hash_hex, timestamp, nonce, difficulty);
+		let bad_block = Block::new(
+			timestamp,
+			genesis_block.hash.clone(),
+			new_hash,
+			data,
+			nonce,
+			difficulty,
+		);
 		blockchain.chain.push(bad_block);
 
 		let is_valid = Blockchain::is_valid_chain(&blockchain.chain);

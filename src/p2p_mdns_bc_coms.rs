@@ -1,21 +1,27 @@
-use libp2p::gossipsub::IdentTopic;
-use libp2p::gossipsub::{MessageId, PublishError};
-use libp2p::identity::Keypair;
-use libp2p::{
-	Multiaddr, PeerId, Swarm, SwarmBuilder, gossipsub, mdns, tcp, tls, yamux,
+use libp2p::gossipsub::{
+	Behaviour, Config, IdentTopic, IdentityTransform, MessageAuthenticity,
+	MessageId, PublishError,
 };
+use libp2p::identity::Keypair;
+use libp2p::swarm::SwarmEvent;
+use libp2p::{Multiaddr, PeerId, Swarm, SwarmBuilder, mdns, tcp, tls, yamux};
+
 use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
 use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
-use tokio::sync::{Mutex, OnceCell, RwLock};
+use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
+
+use crate::blockchain::{Blockchain, BlockchainTr};
 
 #[derive(libp2p::swarm::NetworkBehaviour)]
 pub struct P2PBehaviour {
-	pub gossipsub: gossipsub::Behaviour,
+	pub gossipsub: Behaviour,
 	pub mdns: mdns::tokio::Behaviour,
 }
+
+type SwarmEventType = SwarmEvent<P2PBehaviourEvent>;
 
 #[derive(Debug, EnumIter, Display, EnumString)]
 pub enum TopicEnum {
@@ -30,6 +36,7 @@ pub struct P2PConnection {
 	pub peer_id: PeerId,
 	pub swarm: Mutex<Swarm<P2PBehaviour>>,
 	pub connected_peers: RwLock<HashMap<PeerId, u32>>,
+	pub event_tx: mpsc::Sender<SwarmEventType>,
 }
 
 impl P2PConnection {
@@ -52,15 +59,14 @@ impl P2PConnection {
 		let peer_id = PeerId::from(keypair.public());
 
 		// 2. Create gossip behavior
-		let mut gossip_sub: gossipsub::Behaviour<gossipsub::IdentityTransform> =
-			gossipsub::Behaviour::new(
-				gossipsub::MessageAuthenticity::Signed(keypair.clone()),
-				gossipsub::Config::default(),
-			)?;
+		let mut gossip_sub: Behaviour<IdentityTransform> = Behaviour::new(
+			MessageAuthenticity::Signed(keypair.clone()),
+			Config::default(),
+		)?;
 
 		// 3. Create topic and subscribe.
 		for item in TopicEnum::iter() {
-			let topic = gossipsub::IdentTopic::new(item.to_string());
+			let topic = IdentTopic::new(item.to_string());
 			gossip_sub.subscribe(&topic)?;
 		}
 
@@ -90,6 +96,8 @@ impl P2PConnection {
 		swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 		swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
 
+		let (event_tx, _) = mpsc::channel(32);
+
 		let connected_peers: HashMap<PeerId, u32> = HashMap::new();
 
 		Ok(Self {
@@ -97,6 +105,7 @@ impl P2PConnection {
 			peer_id,
 			swarm: Mutex::new(swarm),
 			connected_peers: RwLock::new(connected_peers),
+			event_tx,
 		})
 	}
 
@@ -113,14 +122,27 @@ impl P2PConnection {
 
 	pub async fn publish(
 		&self,
-		topic: IdentTopic,
+		topic: &IdentTopic,
 		input: &[u8],
 	) -> Result<MessageId, PublishError> {
+		let topic = topic.clone();
+
+		// if let Ok(mut swarm) = self.swarm.try_lock() {
+		// 	swarm
+		// 		.behaviour_mut()
+		// 		.gossipsub
+		// 		.publish(topic, input)
+		// } else {
+		// 	// Swarm is busy with event processing - skip this publish
+		// 	println!("Skipping publish - swarm busy");
+		// 	Err(PublishError::Duplicate)
+		// }
+
 		let mut swarm = self.swarm.lock().await;
 		swarm
 			.behaviour_mut()
 			.gossipsub
-			.publish(topic.clone(), input)
+			.publish(topic, input)
 	}
 
 	pub async fn add_connected_peer(&self, peer_id: &PeerId) {
@@ -182,5 +204,19 @@ impl P2PConnection {
 
 	pub async fn get_connected_peers_len(&self) -> usize {
 		self.connected_peers.read().await.len()
+	}
+
+	pub async fn broadcast_chain(
+		&self,
+		topic: &IdentTopic,
+		blockchain: &Blockchain,
+	) {
+		let blockchain_guard = blockchain;
+		if let Ok(bytes_chain) = Blockchain::chain_to_bytes(blockchain_guard) {
+			match self.publish(topic, &bytes_chain).await {
+				Ok(_) => println!("Debounced blockchain published!"),
+				Err(e) => println!("Failed to send: {}", e),
+			}
+		}
 	}
 }

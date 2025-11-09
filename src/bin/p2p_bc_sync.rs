@@ -3,13 +3,22 @@
  */
 use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
-use std::{error::Error, str::FromStr};
+use std::{error::Error, str::FromStr, sync::Arc, time::Duration};
 use tokio::io::{self, AsyncBufReadExt};
+use tokio::sync::Mutex;
+use tokio::time::interval;
 
-use cryptochain::p2p_mdns_bc_coms::{self, P2PBehaviourEvent, TopicEnum};
+use cryptochain::{
+	blockchain::{Blockchain, BlockchainTr},
+	comms_debounce::debounce,
+	p2p_mdns_bc_coms::{self, P2PBehaviourEvent, TopicEnum},
+};
+
+// Should have initialization script, and continuous event loop.
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+	let blockchain = Arc::new(Mutex::new(Blockchain::new()));
 	let connection = p2p_mdns_bc_coms::P2PConnection::global().await;
 	tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -17,7 +26,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("=================\n");
 
 	let mut stdin = io::BufReader::new(io::stdin()).lines();
-	let topic = gossipsub::IdentTopic::new(TopicEnum::Blockchain.to_string());
+	let topic =
+		Arc::new(gossipsub::IdentTopic::new(TopicEnum::Blockchain.to_string()));
+	let mut heartbeat = interval(Duration::from_millis(100));
 
 	/*
 	 * In loop have to do a few concurrent things.
@@ -33,6 +44,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	 * 9 - PoW block mining process with rayon for parallel processing.
 	 * 10. - add a global event blocker to prevent from mining anything until required number of blocks has been downloaded into history when the chain is out of sync.
 	 */
+
+	let debounced_chain_broadcast = {
+		let topic = topic.clone();
+		let blockchain = blockchain.clone();
+		let connection = connection.clone();
+
+		debounce(Duration::from_millis(10000), move || {
+			let topic = topic.clone();
+			let blockchain = blockchain.clone();
+			let connection = connection.clone();
+
+			async move {
+				connection
+					.broadcast_chain(&topic, &*blockchain.lock().await)
+					.await;
+			}
+		})
+	};
+
 	loop {
 		tokio::select! {
 			// Send blockchain sync event instead of text arg. Need to do some work, and add
@@ -43,7 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 						break;
 					}
 					if connection.get_connected_peers_len().await > 0 && !input.is_empty() {
-						match connection.publish(topic.clone(), input.as_bytes()).await {
+						match connection.publish(&topic, input.as_bytes()).await {
 							Ok(_) => println!("Message sent!"),
 							Err(e) => eprintln!("Failed to send: {}", e),
 						}
@@ -53,31 +83,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
 				}
 			},
 			event = async {
-				let mut swarm = connection.swarm.lock().await;
-				swarm.select_next_some().await
+				// Only lock swarm long enough to get one event
+				let event = {
+					let mut swarm = connection.swarm.lock().await;
+					swarm.select_next_some().await
+				};
+				event // Lock released before returning from the async block
 			} => {
 				match event {
 					SwarmEvent::Behaviour(P2PBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
-						println!(">! {:#?}", message);
-
 						let topic: &String = &message.topic.to_string();
-						let text = String::from_utf8_lossy(&message.data);
 
 						if let Ok(topic_enum) = TopicEnum::from_str(&topic) {
 							match topic_enum {
 								TopicEnum::Blockchain => {
-									// this is where chain replacement is.
-									let text = String::from_utf8_lossy(&message.data);
-									println!(">> {text}");
+									// chain replacement.
+									if let Ok(new_chain) = Blockchain::chain_from_bytes(&message.data) {
+										blockchain.lock().await.replace_chain(new_chain);
+									}
 								},
 								_ => {
 									println!("Unknown channel message.");
 								}
 							}
 						}
-
 						println!(">! {:#?}", message);
-						println!(">> {}, {}", text, topic);
 					}
 					SwarmEvent::NewListenAddr { address, .. } => {
 						println!("* Listening on: {}", address);
@@ -97,14 +127,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
 					}
 					SwarmEvent::ConnectionEstablished { peer_id, .. } => {
 						connection.add_connected_peer(&peer_id).await;
+
+						debounced_chain_broadcast();
+
+						// let topic = gossipsub::IdentTopic::new(TopicEnum::Blockchain.to_string());
+						// let blockchain_guard = blockchain.lock().await;
+						// if let Ok(bytes_chain) = Blockchain::chain_to_bytes(&*blockchain_guard) {
+						// 	match connection.publish(&topic, &bytes_chain).await {
+						// 		Ok(_) => println!("Debounced blockchain published!"),
+						// 		Err(e) => println!("Failed to send: {}", e),
+						// 	}
+						// }
 					}
 					SwarmEvent::ConnectionClosed { peer_id, .. } => {
 						connection.closed_connection(&peer_id).await;
 					}
 					_ => {}
 				}
-			}
+			},
+			_ = heartbeat.tick() => {}
+			// Do nothing, just yield to other tasks
 		}
+		// tokio::task::yield_now().await;
 	}
 
 	Ok(())
