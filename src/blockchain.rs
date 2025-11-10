@@ -8,7 +8,7 @@ pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<String>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>);
 	fn chain_to_bytes(
-		chain: &Self,
+		chain: &Vec<Block>,
 	) -> Result<Vec<u8>, bincode::error::EncodeError>;
 	fn chain_from_bytes(
 		bytes: &[u8],
@@ -93,10 +93,10 @@ impl BlockchainTr for Blockchain {
 	}
 
 	fn chain_to_bytes(
-		blockchain: &Self,
+		chain: &Vec<Block>,
 	) -> Result<Vec<u8>, bincode::error::EncodeError> {
 		let config = bincode::config::standard();
-		bincode::encode_to_vec(&blockchain.chain, config)
+		bincode::encode_to_vec(chain, config)
 	}
 
 	fn chain_from_bytes(

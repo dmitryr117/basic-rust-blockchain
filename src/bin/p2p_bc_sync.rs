@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			let topic = topic.clone();
 			let blockchain_quard = blockchain.lock().await;
 			if let Ok(bytes_chain) =
-				Blockchain::chain_to_bytes(&*blockchain_quard)
+				Blockchain::chain_to_bytes(&blockchain_quard.chain)
 			{
 				match connection.publish(&topic, &bytes_chain).await {
 					Ok(_) => println!("Debounced blockchain published!"),

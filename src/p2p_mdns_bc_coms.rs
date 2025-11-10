@@ -126,18 +126,6 @@ impl P2PConnection {
 		input: &[u8],
 	) -> Result<MessageId, PublishError> {
 		let topic = topic.clone();
-
-		// if let Ok(mut swarm) = self.swarm.try_lock() {
-		// 	swarm
-		// 		.behaviour_mut()
-		// 		.gossipsub
-		// 		.publish(topic, input)
-		// } else {
-		// 	// Swarm is busy with event processing - skip this publish
-		// 	println!("Skipping publish - swarm busy");
-		// 	Err(PublishError::Duplicate)
-		// }
-
 		let mut swarm = self.swarm.lock().await;
 		swarm
 			.behaviour_mut()
@@ -212,7 +200,9 @@ impl P2PConnection {
 		blockchain: &Blockchain,
 	) {
 		let blockchain_guard = blockchain;
-		if let Ok(bytes_chain) = Blockchain::chain_to_bytes(blockchain_guard) {
+		if let Ok(bytes_chain) =
+			Blockchain::chain_to_bytes(&blockchain_guard.chain)
+		{
 			match self.publish(topic, &bytes_chain).await {
 				Ok(_) => println!("Debounced blockchain published!"),
 				Err(e) => println!("Failed to send: {}", e),
