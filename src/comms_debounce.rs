@@ -1,37 +1,30 @@
-use std::{sync::Arc, time::Duration};
-use tokio::{sync::Mutex, time::sleep};
+use std::time::{Duration, Instant};
 
-/// Returns a debounced version of an async function.
-/// Each call resets the timer; only the last one actually runs.
-pub fn debounce<F, Fut>(
+pub struct Debouncer {
+	last_event: Option<Instant>,
 	delay: Duration,
-	func: F,
-) -> impl Fn() + Send + Sync + 'static
-where
-	F: Fn() -> Fut + Send + Sync + 'static,
-	Fut: std::future::Future<Output = ()> + Send + 'static,
-{
-	let func = Arc::new(func);
-	let state: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>> =
-		Arc::new(Mutex::new(None));
+	pending_execution: bool,
+}
 
-	move || {
-		let func = func.clone();
-		let state = state.clone();
+impl Debouncer {
+	pub fn new(delay: Duration) -> Self {
+		Self { last_event: None, delay, pending_execution: false }
+	}
 
-		tokio::spawn(async move {
-			// Cancel previous timer
-			if let Some(handle) = state.lock().await.take() {
-				handle.abort();
+	pub fn on_event(&mut self) {
+		self.last_event = Some(Instant::now());
+		self.pending_execution = true;
+	}
+
+	pub fn check(&mut self) -> bool {
+		if self.pending_execution {
+			if let Some(last_event) = self.last_event {
+				if last_event.elapsed() >= self.delay {
+					self.pending_execution = false;
+					return true;
+				}
 			}
-
-			// Start new timer
-			let handle = tokio::spawn(async move {
-				sleep(delay).await;
-				(func)().await;
-			});
-
-			*state.lock().await = Some(handle);
-		});
+		}
+		false
 	}
 }
