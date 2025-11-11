@@ -76,7 +76,7 @@ impl BlockchainTr for Blockchain {
 	}
 
 	fn replace_chain(&mut self, new_chain: Vec<Block>) {
-		if new_chain.len() < self.chain.len() {
+		if new_chain.len() <= self.chain.len() {
 			eprintln!(
 				"New chain too short. Old len: {}, new len: {}",
 				self.chain.len(),
