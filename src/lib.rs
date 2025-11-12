@@ -7,3 +7,4 @@ pub mod http_server;
 pub mod p2p_mdns_bc_coms;
 pub mod p2p_mdns_singleton;
 pub mod p2p_task;
+pub mod wallet;
