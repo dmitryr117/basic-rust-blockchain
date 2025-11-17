@@ -1,6 +1,6 @@
 use crate::{
 	block::{Block, BlockTr},
-	crypto_hash::cryptohash,
+	utils::cryptohash,
 };
 
 // Also nbeed to load chain from file system if it exists.

@@ -10,22 +10,22 @@ pub struct Wallet {
 	// **ALERT!**  This has to be removed in production. Transactions have
 	//to be signed locally before being submitted into the system
 	pub keypair: Keypair,
-	pub public_key: PublicKey,
+	pub public_key: Vec<u8>,
 	pub balance: usize,
 }
 
 impl Wallet {
 	pub fn new(keypair: &Keypair) -> Self {
 		// let priv_key = keypair.
-		let pub_key = keypair.public();
+		let public_key = keypair.public().encode_protobuf();
 
-		let hex_pub_key = hex::encode(pub_key.encode_protobuf());
+		let hex_pub_key = hex::encode(public_key.clone());
 
 		println!("Hex pub key: {hex_pub_key}");
 
 		Self {
 			balance: STARTING_BALANCE,
-			public_key: pub_key,
+			public_key,
 			keypair: keypair.clone(), // will need to remove in production
 		}
 	}
@@ -56,16 +56,20 @@ impl Wallet {
 		)
 	}
 
-	pub fn get_peer_id(&self) {
-		self.public_key.to_peer_id().to_string();
+	pub fn get_peer_id(&self) -> String {
+		let public_key = PublicKey::try_decode_protobuf(&self.public_key)
+			.expect("Failed to dekode PK protobuf");
+		public_key.to_peer_id().to_string()
 	}
 
 	pub fn verify_signature(
-		public_key: &PublicKey,
+		public_key: &Vec<u8>,
 		data: &[u8],
 		signature: &[u8],
 	) -> bool {
-		public_key.verify(data, signature)
+		let pk = PublicKey::try_decode_protobuf(public_key)
+			.expect("Failed to decode PK protobuf");
+		pk.verify(data, signature)
 	}
 
 	pub fn sign(&self, data: &[u8]) -> Result<Vec<u8>, SigningError> {
@@ -91,7 +95,7 @@ mod tests {
 		let keypair = Keypair::generate_ed25519();
 		let wallet = Wallet::new(&keypair);
 
-		let pubkey = keypair.public();
+		let pubkey = keypair.public().encode_protobuf();
 
 		assert_eq!(wallet.public_key, pubkey);
 	}

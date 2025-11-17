@@ -6,7 +6,7 @@ use crate::{
 		GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH,
 		GENESIS_NONCE, GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
 	},
-	crypto_hash::cryptohash,
+	utils::cryptohash,
 };
 use chrono::Utc;
 
