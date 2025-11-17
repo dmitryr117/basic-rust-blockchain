@@ -1,7 +1,7 @@
 use bs58;
 use hex;
 
-use crate::config::STARTING_BALANCE;
+use crate::{config::STARTING_BALANCE, transaction::Transaction};
 use libp2p::identity::{Keypair, PublicKey, SigningError};
 use sha3::{Digest, Sha3_256};
 
@@ -75,6 +75,17 @@ impl Wallet {
 	pub fn sign(&self, data: &[u8]) -> Result<Vec<u8>, SigningError> {
 		self.keypair.sign(data)
 	}
+
+	pub fn create_transaction(
+		&self,
+		amount: usize,
+		recipient: &Vec<u8>,
+	) -> Result<Transaction, ()> {
+		if self.balance < amount {
+			return Err(());
+		}
+		Ok(Transaction::new(self, recipient, amount))
+	}
 }
 
 #[cfg(test)]
@@ -85,8 +96,7 @@ mod tests {
 
 	#[test]
 	fn test_default_balance() {
-		let keypair = Keypair::generate_ed25519();
-		let wallet = Wallet::new(&keypair);
+		let wallet = Wallet::new(&Keypair::generate_ed25519());
 		assert_eq!(wallet.balance, STARTING_BALANCE);
 	}
 
@@ -121,37 +131,86 @@ mod tests {
 		assert_eq!(standard, comparator);
 	}
 
-	#[test]
-	fn test_sign_data_verify_signature() {
-		let data = "FooBar".as_bytes();
+	mod test_verify_signature {
 
-		let keypair = Keypair::generate_ed25519();
-		let wallet = Wallet::new(&keypair);
+		use super::*;
+		use pretty_assertions::assert_eq;
 
-		let signed_data = wallet.sign(data).unwrap();
+		#[test]
+		fn test_sign_data_verify_signature() {
+			let data = "FooBar".as_bytes();
+			let wallet = Wallet::new(&Keypair::generate_ed25519());
 
-		let verified =
-			Wallet::verify_signature(&wallet.public_key, data, &signed_data);
-		assert_eq!(verified, true);
+			let signed_data = wallet.sign(data).unwrap();
+
+			let verified = Wallet::verify_signature(
+				&wallet.public_key,
+				data,
+				&signed_data,
+			);
+			assert_eq!(verified, true);
+		}
+
+		#[test]
+		fn test_sign_data_invalid_signature() {
+			let data = "FooBar".as_bytes();
+			let wallet = Wallet::new(&Keypair::generate_ed25519());
+			let wrong_wallet = Wallet::new(&Keypair::generate_ed25519());
+
+			let wrong_signed_data = wrong_wallet.sign(data).unwrap();
+
+			let verified = Wallet::verify_signature(
+				&wallet.public_key,
+				data,
+				&wrong_signed_data,
+			);
+			assert_eq!(verified, false);
+		}
 	}
 
-	#[test]
-	fn test_sign_data_invalid_signature() {
-		let data = "FooBar".as_bytes();
+	mod test_create_transaction {
+		use super::*;
+		use pretty_assertions::assert_eq;
 
-		let keypair = Keypair::generate_ed25519();
-		let wallet = Wallet::new(&keypair);
+		fn before_each() -> (usize, Wallet, Wallet) {
+			let amount: usize = 50;
+			let recipient = Wallet::new(&Keypair::generate_ed25519());
+			let wallet = Wallet::new(&Keypair::generate_ed25519());
 
-		let keypair = Keypair::generate_ed25519();
-		let wrong_wallet = Wallet::new(&keypair);
+			(amount, recipient, wallet)
+		}
 
-		let wrong_signed_data = wrong_wallet.sign(data).unwrap();
+		#[test]
+		fn create_transaction_amount_exceeds_balance() {
+			let (_amount, recipient, wallet) = before_each();
 
-		let verified = Wallet::verify_signature(
-			&wallet.public_key,
-			data,
-			&wrong_signed_data,
-		);
-		assert_eq!(verified, false);
+			let res = wallet.create_transaction(999_999, &recipient.public_key);
+			assert_eq!(res.is_err(), true);
+		}
+
+		#[test]
+		fn match_transaction_input_with_wallet() {
+			let (amount, recipient, wallet) = before_each();
+			let transaction = wallet
+				.create_transaction(amount, &recipient.public_key)
+				.unwrap();
+
+			assert_eq!(transaction.input.sender_address, wallet.public_key);
+		}
+
+		#[test]
+		fn output_recipient_amount() {
+			let (amount, recipient, wallet) = before_each();
+			let transaction = wallet
+				.create_transaction(amount, &recipient.public_key)
+				.unwrap();
+
+			let txn_recipient_output_map_value = transaction
+				.output_map
+				.get(&recipient.public_key)
+				.unwrap();
+
+			assert_eq!(*txn_recipient_output_map_value, amount);
+		}
 	}
 }
