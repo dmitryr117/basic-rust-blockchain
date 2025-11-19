@@ -7,6 +7,7 @@ use libp2p::identity::PublicKey;
 use rand::Rng;
 use uuid::Uuid;
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
 	pub id: Uuid,
 	pub amount: usize,

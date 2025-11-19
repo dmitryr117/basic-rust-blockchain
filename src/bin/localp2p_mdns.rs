@@ -2,7 +2,9 @@
  * This is a test program to check MDNS peer detection, connection, and TX / RX
  */
 use futures::StreamExt;
-use libp2p::{PeerId, SwarmBuilder, gossipsub, mdns, swarm::SwarmEvent, tcp, tls, yamux};
+use libp2p::{
+	PeerId, SwarmBuilder, gossipsub, mdns, swarm::SwarmEvent, tcp, tls, yamux,
+};
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
 use tokio::io::{self, AsyncBufReadExt};
@@ -36,10 +38,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	// 4. Create communication swarm.
 	let mut swarm = SwarmBuilder::with_existing_identity(keypair.clone())
 		.with_tokio()
-		.with_tcp(tcp::Config::default(), tls::Config::new, yamux::Config::default)?
+		.with_tcp(
+			tcp::Config::default(),
+			tls::Config::new,
+			yamux::Config::default,
+		)?
 		.with_quic()
 		.with_behaviour(|_key| Ok(MyBehaviour { gossipsub: gossip_sub, mdns }))?
-		.with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
+		.with_swarm_config(|cfg| {
+			cfg.with_idle_connection_timeout(Duration::from_secs(60))
+		})
 		.build();
 
 	// 5. Start listening on localhost.

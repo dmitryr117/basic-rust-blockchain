@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::{utils::output_map_to_bytes, wallet::Wallet};
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransactionInput {
 	pub timestamp: usize,
 	pub amount: usize,
