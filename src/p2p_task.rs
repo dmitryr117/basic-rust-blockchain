@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
+use crate::transaction_pool::TransactionPool;
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
 	comms_debounce::Debouncer,
@@ -16,7 +17,10 @@ use crate::{
 };
 
 // Should have initialization script, and continuous event loop.
-pub fn start_p2p_task(blockchain: Arc<RwLock<Blockchain>>) -> JoinHandle<()> {
+pub fn start_p2p_task(
+	blockchain: Arc<RwLock<Blockchain>>,
+	transaction_pool: Arc<RwLock<TransactionPool>>,
+) -> JoinHandle<()> {
 	tokio::spawn(async move {
 		let connection = p2p_mdns_bc_coms::P2PConnection::global().await;
 		tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

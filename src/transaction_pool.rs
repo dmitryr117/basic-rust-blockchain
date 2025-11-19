@@ -3,6 +3,7 @@ use uuid::Uuid;
 use crate::transaction::Transaction;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct TransactionPool {
 	transaction_map: HashMap<Uuid, Transaction>,
 }
