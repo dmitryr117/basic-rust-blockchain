@@ -1,14 +1,17 @@
-use axum::{Json, Router, extract::State, routing::get};
+use std::collections::HashMap;
 
-use crate::{http_server::AppState, transaction_pool::TransactionPool};
+use axum::{Json, Router, extract::State, routing::get};
+use uuid::Uuid;
+
+use crate::{http_server::AppState, transaction::Transaction};
 
 pub fn routes() -> Router<AppState> {
-	Router::new().route("/transaction_pool", get(get_transaction_pool))
+	Router::new().route("/transaction-pool-map", get(get_transaction_pool))
 }
 
 async fn get_transaction_pool(
 	State(state): State<AppState>,
-) -> Json<TransactionPool> {
+) -> Json<HashMap<Uuid, Transaction>> {
 	let transaction_pool = state.transaction_pool.read().await;
-	Json(transaction_pool.to_owned())
+	Json(transaction_pool.transaction_map.to_owned())
 }

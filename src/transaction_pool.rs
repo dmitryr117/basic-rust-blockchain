@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TransactionPool {
-	transaction_map: HashMap<Uuid, Transaction>,
+	pub transaction_map: HashMap<Uuid, Transaction>,
 }
 
 impl TransactionPool {
@@ -72,7 +72,6 @@ mod test_transaction_pool {
 				.transaction_map
 				.get(&transaction.id)
 				.unwrap();
-			// wikll have issues here
 			assert_eq!(*txn, transaction);
 		}
 	}

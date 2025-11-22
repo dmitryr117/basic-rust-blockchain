@@ -22,9 +22,13 @@ pub fn start_http_server_task(
 		let state = AppState { wallet, transaction_pool };
 
 		let app: Router = Router::new()
-			.merge(transact::routes())
-			.merge(transaction_pool::routes())
-			.route("/", get(hello_world))
+			.nest(
+				"/api",
+				Router::new()
+					.merge(transact::routes())
+					.merge(transaction_pool::routes())
+					.route("/", get(hello_world)),
+			)
 			.with_state(state);
 
 		let listener = tokio::net::TcpListener::bind("localhost:3005")
