@@ -27,21 +27,40 @@ async fn transact(
 	let recipient_hex_address = payload
 		.recipient
 		.expect("Unable to load recipient address.");
-	let pecipient_vec_address = hex::decode(recipient_hex_address.clone())
+	let recipient_vec_address = hex::decode(recipient_hex_address.clone())
 		.expect("Unable to decode recipient hex address.");
 
-	let txn_result = wallet.create_transaction(amount, &pecipient_vec_address);
+	let mut transaction_pool = state.transaction_pool.write().await;
 
-	match txn_result {
-		Ok(transaction) => {
-			let mut transaction_pool = state.transaction_pool.write().await;
-			transaction_pool.set_transaction(transaction.clone());
-			Ok(Json(transaction))
+	let existing_transaction =
+		transaction_pool.existing_transaction_mut(&wallet.public_key);
+
+	match existing_transaction {
+		Some(transaction) => {
+			let update_result =
+				transaction.update(&wallet, &recipient_vec_address, amount);
+			match update_result {
+				Ok(()) => Ok(Json(transaction.clone())),
+				Err(err) => Err((
+					StatusCode::BAD_REQUEST,
+					format!("Invalid transaction: {}", err),
+				)),
+			}
 		}
-		Err(err) => Err((
-			StatusCode::BAD_REQUEST,
-			format!("Invalid transaction: {}", err),
-		)),
+		None => {
+			let txn_result =
+				wallet.create_transaction(amount, &recipient_vec_address);
+			match txn_result {
+				Ok(transaction) => {
+					transaction_pool.set_transaction(transaction.clone());
+					Ok(Json(transaction))
+				}
+				Err(err) => Err((
+					StatusCode::BAD_REQUEST,
+					format!("Invalid transaction: {}", err),
+				)),
+			}
+		}
 	}
 	// println!("transaction_pool: {:#?}", transaction_pool);
 

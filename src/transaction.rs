@@ -94,28 +94,28 @@ impl Transaction {
 	pub fn update(
 		&mut self,
 		sender_wallet: &Wallet,
-		next_recipient: Vec<u8>,
+		next_recipient: &Vec<u8>,
 		next_amount: usize,
-	) -> Result<(), ()> {
+	) -> Result<(), &str> {
 		let output_balance = *self
 			.output_map
 			.get(&sender_wallet.public_key)
 			.unwrap();
 
 		if next_amount > output_balance {
-			return Err(());
+			return Err("Insufficient wallet balance.");
 		}
 
 		let mut recipient_amount = next_amount;
-		if self.output_map.contains_key(&next_recipient) {
+		if self.output_map.contains_key(next_recipient) {
 			recipient_amount = *self
 				.output_map
-				.get(&next_recipient)
+				.get(next_recipient)
 				.expect("Unable to get amount value.")
 				+ recipient_amount;
 		}
 		self.output_map
-			.insert(next_recipient, recipient_amount);
+			.insert(next_recipient.clone(), recipient_amount);
 
 		self.output_map.insert(
 			sender_wallet.public_key.clone(),

@@ -17,6 +17,20 @@ impl TransactionPool {
 		self.transaction_map
 			.insert(transaction.id, transaction);
 	}
+
+	pub fn existing_transaction_mut(
+		&mut self,
+		input_address: &Vec<u8>,
+	) -> Option<&mut Transaction> {
+		let opt = self
+			.transaction_map
+			.iter_mut()
+			.find(|txn| txn.1.input.sender_address == *input_address);
+		match opt {
+			Some((_, transaction)) => Some(transaction),
+			None => None,
+		}
+	}
 }
 
 #[cfg(test)]
