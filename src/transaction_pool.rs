@@ -42,27 +42,29 @@ mod test_transaction_pool {
 		wallet::Wallet,
 	};
 
+	const AMOUNT: usize = 50;
+
+	fn before_each() -> (TransactionPool, Transaction, Wallet) {
+		let transaction_pool = TransactionPool::new();
+		let sender_wallet = Wallet::new(&Keypair::generate_ed25519());
+		let recipient_wallet = Wallet::new(&Keypair::generate_ed25519());
+		let amount: usize = AMOUNT;
+		let transaction = Transaction::new(
+			&sender_wallet,
+			&recipient_wallet.public_key,
+			amount,
+		);
+
+		(transaction_pool, transaction, sender_wallet)
+	}
+
 	mod set_transaction {
 		use super::*;
 		use pretty_assertions::assert_eq;
 
-		fn before_each() -> (TransactionPool, Transaction) {
-			let transaction_pool = TransactionPool::new();
-			let sender_wallet = Wallet::new(&Keypair::generate_ed25519());
-			let recipient_wallet = Wallet::new(&Keypair::generate_ed25519());
-			let amount: usize = 50;
-			let transaction = Transaction::new(
-				&sender_wallet,
-				&recipient_wallet.public_key,
-				amount,
-			);
-
-			(transaction_pool, transaction)
-		}
-
 		#[test]
 		fn add_transaction() {
-			let (mut transaction_pool, transaction) = before_each();
+			let (mut transaction_pool, transaction, _) = before_each();
 
 			transaction_pool.set_transaction(transaction.clone());
 
@@ -72,6 +74,28 @@ mod test_transaction_pool {
 				.unwrap();
 			// wikll have issues here
 			assert_eq!(*txn, transaction);
+		}
+	}
+
+	mod existing_transaction_mut {
+		use super::*;
+		use pretty_assertions::assert_eq;
+
+		fn before_each() -> (TransactionPool, Transaction, Wallet) {
+			let (mut transaction_pool, transaction, sender_wallet) =
+				super::before_each();
+			transaction_pool.set_transaction(transaction.clone());
+			(transaction_pool, transaction, sender_wallet)
+		}
+
+		#[test]
+		fn existing_transaction_mut() {
+			let (mut transaction_pool, transaction, sender_wallet) =
+				before_each();
+			let txn = transaction_pool
+				.existing_transaction_mut(&sender_wallet.public_key)
+				.expect("Transaction should exist, but got None");
+			assert_eq!(*txn, transaction)
 		}
 	}
 }
