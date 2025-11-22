@@ -80,9 +80,9 @@ impl Wallet {
 		&self,
 		amount: usize,
 		recipient: &Vec<u8>,
-	) -> Result<Transaction, ()> {
+	) -> Result<Transaction, &str> {
 		if self.balance < amount {
-			return Err(());
+			return Err("Insufficient ballance.");
 		}
 		Ok(Transaction::new(self, recipient, amount))
 	}
