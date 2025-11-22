@@ -1,13 +1,18 @@
 use chrono::Utc;
+use serde::Serialize;
+use serde_with::serde_as;
 use std::collections::HashMap;
 
 use crate::{utils::output_map_to_bytes, wallet::Wallet};
 
-#[derive(Debug, Clone, PartialEq)]
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TransactionInput {
 	pub timestamp: usize,
 	pub amount: usize,
+	#[serde_as(as = "serde_with::hex::Hex")]
 	pub sender_address: Vec<u8>,
+	#[serde_as(as = "serde_with::hex::Hex")]
 	pub signature: Vec<u8>,
 }
 

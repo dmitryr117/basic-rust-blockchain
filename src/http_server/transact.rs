@@ -37,7 +37,7 @@ async fn transact(
 	let mut transaction_pool = state.transaction_pool.write().await;
 	transaction_pool.set_transaction(transaction);
 
-	println!("transaction_pool: {:#?}", transaction_pool);
+	// println!("transaction_pool: {:#?}", transaction_pool);
 
 	format!(
 		"Created transaction: sender: {}, amount: {} recipient: {}",

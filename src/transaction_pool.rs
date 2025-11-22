@@ -1,9 +1,9 @@
+use crate::transaction::Transaction;
+use serde::Serialize;
+use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::transaction::Transaction;
-use std::collections::HashMap;
-
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TransactionPool {
 	transaction_map: HashMap<Uuid, Transaction>,
 }

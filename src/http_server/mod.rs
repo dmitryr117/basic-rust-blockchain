@@ -1,4 +1,5 @@
 pub mod transact;
+pub mod transaction_pool;
 
 use std::sync::Arc;
 
@@ -22,6 +23,7 @@ pub fn start_http_server_task(
 
 		let app: Router = Router::new()
 			.merge(transact::routes())
+			.merge(transaction_pool::routes())
 			.route("/", get(hello_world))
 			.with_state(state);
 
