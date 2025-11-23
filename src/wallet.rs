@@ -11,7 +11,7 @@ pub struct Wallet {
 	//to be signed locally before being submitted into the system
 	pub keypair: Keypair,
 	pub public_key: Vec<u8>,
-	pub balance: usize,
+	pub balance: u32,
 }
 
 impl Wallet {
@@ -78,7 +78,7 @@ impl Wallet {
 
 	pub fn create_transaction(
 		&self,
-		amount: usize,
+		amount: u32,
 		recipient: &Vec<u8>,
 	) -> Result<Transaction, &str> {
 		if self.balance < amount {
@@ -172,8 +172,8 @@ mod tests {
 		use super::*;
 		use pretty_assertions::assert_eq;
 
-		fn before_each() -> (usize, Wallet, Wallet) {
-			let amount: usize = 50;
+		fn before_each() -> (u32, Wallet, Wallet) {
+			let amount: u32 = 50;
 			let recipient = Wallet::new(&Keypair::generate_ed25519());
 			let wallet = Wallet::new(&Keypair::generate_ed25519());
 

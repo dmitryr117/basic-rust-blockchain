@@ -5,10 +5,10 @@ mod transaction_tests {
 	use libp2p::identity::Keypair;
 	use pretty_assertions::assert_eq;
 
-	fn before_each() -> (Wallet, Wallet, usize) {
+	fn before_each() -> (Wallet, Wallet, u32) {
 		let sender_wallet = Wallet::new(&Keypair::generate_ed25519());
 		let recipient_wallet = Wallet::new(&Keypair::generate_ed25519());
-		let amount: usize = 50;
+		let amount: u32 = 50;
 
 		(sender_wallet, recipient_wallet, amount)
 	}
@@ -185,8 +185,7 @@ mod transaction_tests {
 		use pretty_assertions::assert_eq;
 
 		fn before_each()
-		-> (Wallet, Wallet, Transaction, Vec<u8>, Vec<u8>, usize, usize, usize)
-		{
+		-> (Wallet, Wallet, Transaction, Vec<u8>, Vec<u8>, u32, u32, u32) {
 			let (sender_wallet, recipient_wallet, amount) =
 				super::before_each();
 			let mut transaction = Transaction::new(
@@ -203,10 +202,10 @@ mod transaction_tests {
 
 			let next_recipient =
 				Wallet::new(&Keypair::generate_ed25519()).public_key;
-			let next_amount: usize = 80;
+			let next_amount: u32 = 80;
 
 			transaction
-				.update(&sender_wallet, next_recipient.clone(), next_amount)
+				.update(&sender_wallet, &next_recipient, next_amount)
 				.unwrap();
 
 			(
@@ -279,7 +278,7 @@ mod transaction_tests {
 				_next_amount,
 			) = before_each();
 
-			let amount_sum: usize = transaction.output_map.values().sum();
+			let amount_sum: u32 = transaction.output_map.values().sum();
 
 			assert_eq!(amount_sum, transaction.input.amount);
 		}
@@ -317,10 +316,13 @@ mod transaction_tests {
 
 			let next_recipient =
 				Wallet::new(&Keypair::generate_ed25519()).public_key;
-			let next_amount: usize = 999999;
+			let next_amount: u32 = 999999;
 
-			let res =
-				transaction.update(&sender_wallet, next_recipient, next_amount);
+			let res = transaction.update(
+				&sender_wallet,
+				&next_recipient,
+				next_amount,
+			);
 
 			assert_eq!(res.is_err(), true);
 		}
@@ -336,7 +338,7 @@ mod transaction_tests {
 			);
 
 			let next_recipient = &recipient_wallet.public_key;
-			let next_amount: usize = 100;
+			let next_amount: u32 = 100;
 
 			let first_recipient_amount = *transaction
 				.output_map
@@ -349,7 +351,7 @@ mod transaction_tests {
 				.unwrap();
 
 			transaction
-				.update(&sender_wallet, next_recipient.clone(), next_amount)
+				.update(&sender_wallet, &next_recipient, next_amount)
 				.unwrap();
 
 			let total_recipient_amount = *transaction

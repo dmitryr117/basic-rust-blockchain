@@ -1,19 +1,35 @@
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use serde::Deserialize;
+use uuid::Uuid;
 use validator::Validate;
 
-use crate::{http_server::AppState, transaction::Transaction};
+use crate::{
+	channels::{AppEvent, AppMessage},
+	constants,
+	http_server::AppState,
+	transaction::Transaction,
+};
 
 #[derive(Debug, Deserialize, Validate)]
 struct TransactionDto {
 	#[validate(required)]
-	amount: Option<usize>,
+	amount: Option<u32>,
 	#[validate(required)]
 	recipient: Option<String>,
 }
 
 pub fn routes() -> Router<AppState> {
 	Router::new().route("/transact", post(transact))
+}
+
+fn broadcast_txn(state: &AppState, uuid: &Uuid) {
+	if let Ok(_) =
+		state
+			.event_tx
+			.send(AppEvent::BroadcastMessage(AppMessage::new(
+				constants::BROADCAST_TXN_POOL.to_string(),
+				uuid.clone(),
+			))) {};
 }
 
 async fn transact(
@@ -40,7 +56,10 @@ async fn transact(
 			let update_result =
 				transaction.update(&wallet, &recipient_vec_address, amount);
 			match update_result {
-				Ok(()) => Ok(Json(transaction.clone())),
+				Ok(()) => {
+					broadcast_txn(&state, &transaction.id);
+					Ok(Json(transaction.clone()))
+				}
 				Err(err) => Err((
 					StatusCode::BAD_REQUEST,
 					format!("Invalid transaction: {}", err),
@@ -53,6 +72,7 @@ async fn transact(
 			match txn_result {
 				Ok(transaction) => {
 					transaction_pool.set_transaction(transaction.clone());
+					broadcast_txn(&state, &transaction.id);
 					Ok(Json(transaction))
 				}
 				Err(err) => Err((
@@ -62,12 +82,4 @@ async fn transact(
 			}
 		}
 	}
-	// println!("transaction_pool: {:#?}", transaction_pool);
-
-	// format!(
-	// 	"Created transaction: sender: {}, amount: {} recipient: {}",
-	// 	hex::encode(wallet.public_key.clone()),
-	// 	payload.amount.unwrap(),
-	// 	recipient_hex_address,
-	// )
 }

@@ -200,9 +200,7 @@ impl P2PConnection {
 		blockchain: &Blockchain,
 	) {
 		let blockchain_guard = blockchain;
-		if let Ok(bytes_chain) =
-			Blockchain::chain_to_bytes(&blockchain_guard.chain)
-		{
+		if let Ok(bytes_chain) = Blockchain::to_bytes(&blockchain_guard.chain) {
 			match self.publish(topic, &bytes_chain).await {
 				Ok(_) => println!("Debounced blockchain published!"),
 				Err(e) => println!("Failed to send: {}", e),

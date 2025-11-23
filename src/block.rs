@@ -11,30 +11,30 @@ use crate::{
 use chrono::Utc;
 
 pub trait BlockTr<T> {
-	fn adjust_difficulty(last_block: &T, ms_time: usize) -> usize;
+	fn adjust_difficulty(last_block: &T, ms_time: i64) -> u32;
 	fn genesis() -> T;
 	fn mine_block(data: Vec<String>, last_block: &T) -> T;
-	fn is_valid_bit_hash(hash: &[u8], difficulty: usize) -> bool;
+	fn is_valid_bit_hash(hash: &[u8], difficulty: u32) -> bool;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct Block {
-	pub timestamp: usize,
+	pub timestamp: i64,
 	pub last_hash: Vec<u8>,
 	pub hash: Vec<u8>,
 	pub data: Vec<String>,
-	pub nonce: usize,
-	pub difficulty: usize,
+	pub nonce: u32,
+	pub difficulty: u32,
 }
 
 impl Block {
 	pub fn new(
-		timestamp: usize,
+		timestamp: i64,
 		last_hash: Vec<u8>,
 		hash: Vec<u8>,
 		data: Vec<String>,
-		nonce: usize,
-		difficulty: usize,
+		nonce: u32,
+		difficulty: u32,
 	) -> Self {
 		Self { timestamp, last_hash, hash, data, nonce, difficulty }
 	}
@@ -57,15 +57,15 @@ impl BlockTr<Block> for Block {
 	}
 
 	fn mine_block(data: Vec<String>, last_block: &Block) -> Block {
-		let mut ms_time = Utc::now().timestamp_millis() as usize;
+		let mut ms_time = Utc::now().timestamp_millis();
 		let last_hash = hex::encode(&last_block.hash);
-		let difficulty = Self::adjust_difficulty(last_block, ms_time);
-		let mut nonce = 0;
+		let difficulty: u32 = Self::adjust_difficulty(last_block, ms_time);
+		let mut nonce: u32 = 0;
 		let mut new_hash: Vec<u8>;
 
 		loop {
 			nonce += 1;
-			ms_time = Utc::now().timestamp_millis() as usize;
+			ms_time = Utc::now().timestamp_millis();
 			new_hash =
 				cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
 			// let sector = new_hash.get(0..difficulty).unwrap();
@@ -85,10 +85,10 @@ impl BlockTr<Block> for Block {
 		)
 	}
 
-	fn adjust_difficulty(last_block: &Block, ms_time: usize) -> usize {
-		let diff =
-			(last_block.timestamp as isize - ms_time as isize).abs() as usize;
-		let mut new_difficulty: usize;
+	fn adjust_difficulty(last_block: &Block, ms_time: i64) -> u32 {
+		let diff: u32 =
+			(last_block.timestamp as isize - ms_time as isize).abs() as u32;
+		let mut new_difficulty: u32;
 		if diff > MINE_RATE + MINE_RATE_DELTA {
 			// decrease difficulty
 			new_difficulty = last_block.difficulty - 1;
@@ -105,17 +105,21 @@ impl BlockTr<Block> for Block {
 		new_difficulty
 	}
 
-	fn is_valid_bit_hash(hash: &[u8], difficulty: usize) -> bool {
+	fn is_valid_bit_hash(hash: &[u8], difficulty: u32) -> bool {
 		let full_bytes = difficulty / 8;
 		let bits = difficulty % 8;
 
 		// check full zero bytes
-		if hash.iter().take(full_bytes).any(|&b| b != 0) {
+		if hash
+			.iter()
+			.take(full_bytes as usize)
+			.any(|&b| b != 0)
+		{
 			return false;
 		}
 
 		if bits > 0 {
-			if let Some(&byte) = hash.get(full_bytes) {
+			if let Some(&byte) = hash.get(full_bytes as usize) {
 				let mask = 0xFFu8 << (8 - bits);
 				if byte & mask != 0 {
 					return false;
@@ -198,7 +202,7 @@ mod tests {
 		let (_, mined_block) = init_mined_block();
 
 		// -------------- Need to adjust this to work with bit zeros instead of byte zeros.
-		let difficulty = mined_block.difficulty as usize;
+		let difficulty = mined_block.difficulty;
 		// let sector = mined_block.hash.get(0..difficulty).unwrap();
 		// let comparator: Vec<u8> = vec![0; difficulty as usize];
 		let is_valid = Block::is_valid_bit_hash(&mined_block.hash, difficulty);
@@ -221,7 +225,7 @@ mod tests {
 	#[test]
 	fn increase_difficulty_if_mined_too_fast() {
 		let (_, mined_block) = init_mined_block();
-		let ms_time = mined_block.timestamp + MINE_RATE - 100;
+		let ms_time = mined_block.timestamp + MINE_RATE as i64 - 100;
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
 		assert_eq!(new_difficulty, mined_block.difficulty + 1);
 	}
@@ -229,7 +233,7 @@ mod tests {
 	#[test]
 	fn decrease_difficulty_if_mined_too_slow() {
 		let (_, mut mined_block) = init_mined_block();
-		let ms_time = mined_block.timestamp + MINE_RATE + 100;
+		let ms_time = mined_block.timestamp + MINE_RATE as i64 + 100;
 		mined_block.difficulty = 2; // make sure that last block is > 1 for test
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
 		assert_eq!(new_difficulty, mined_block.difficulty - 1);
@@ -238,7 +242,7 @@ mod tests {
 	#[test]
 	fn adjust_difficulty_low_limit() {
 		let (_, mut mined_block) = init_mined_block();
-		let ms_time = mined_block.timestamp + MINE_RATE + 100;
+		let ms_time = mined_block.timestamp + MINE_RATE as i64 + 100;
 		mined_block.difficulty = 1; // make sure that last block is > 1 for test
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
 		assert_eq!(new_difficulty, 1);
@@ -283,7 +287,7 @@ mod tests {
 		let (genesis_block, _) = init_mined_block();
 
 		let last_hash_hex = hex::encode(&genesis_block.hash);
-		let timestamp = Utc::now().timestamp_millis() as usize;
+		let timestamp = Utc::now().timestamp_millis() as i64;
 		let data: Vec<String> = vec![String::from("test")];
 		let nonce = 0;
 		let difficulty = 1;

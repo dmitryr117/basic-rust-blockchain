@@ -1,7 +1,9 @@
 pub mod block;
 pub mod blockchain;
+pub mod channels;
 pub mod comms_debounce;
 pub mod config;
+pub mod constants;
 pub mod http_server;
 pub mod p2p_mdns_bc_coms;
 pub mod p2p_mdns_singleton;

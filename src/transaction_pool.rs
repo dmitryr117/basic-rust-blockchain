@@ -42,13 +42,13 @@ mod test_transaction_pool {
 		wallet::Wallet,
 	};
 
-	const AMOUNT: usize = 50;
+	const AMOUNT: u32 = 50;
 
 	fn before_each() -> (TransactionPool, Transaction, Wallet) {
 		let transaction_pool = TransactionPool::new();
 		let sender_wallet = Wallet::new(&Keypair::generate_ed25519());
 		let recipient_wallet = Wallet::new(&Keypair::generate_ed25519());
-		let amount: usize = AMOUNT;
+		let amount: u32 = AMOUNT;
 		let transaction = Transaction::new(
 			&sender_wallet,
 			&recipient_wallet.public_key,

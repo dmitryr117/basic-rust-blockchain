@@ -7,10 +7,10 @@ use crate::{
 pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<String>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>);
-	fn chain_to_bytes(
+	fn to_bytes(
 		chain: &Vec<Block>,
 	) -> Result<Vec<u8>, bincode::error::EncodeError>;
-	fn chain_from_bytes(
+	fn from_bytes(
 		bytes: &[u8],
 	) -> Result<Vec<Block>, bincode::error::DecodeError>;
 }
@@ -92,14 +92,14 @@ impl BlockchainTr for Blockchain {
 		self.chain = new_chain;
 	}
 
-	fn chain_to_bytes(
+	fn to_bytes(
 		chain: &Vec<Block>,
 	) -> Result<Vec<u8>, bincode::error::EncodeError> {
 		let config = bincode::config::standard();
 		bincode::encode_to_vec(chain, config)
 	}
 
-	fn chain_from_bytes(
+	fn from_bytes(
 		bytes: &[u8],
 	) -> Result<Vec<Block>, bincode::error::DecodeError> {
 		let config = bincode::config::standard();

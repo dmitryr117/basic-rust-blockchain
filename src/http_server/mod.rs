@@ -4,22 +4,29 @@ pub mod transaction_pool;
 use std::sync::Arc;
 
 use axum::{Router, routing::get};
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::{
+	sync::{RwLock, mpsc},
+	task::JoinHandle,
+};
 
-use crate::{transaction_pool::TransactionPool, wallet::Wallet};
+use crate::{
+	channels::AppEvent, transaction_pool::TransactionPool, wallet::Wallet,
+};
 
 #[derive(Clone)]
 pub struct AppState {
 	pub wallet: Arc<RwLock<Wallet>>,
 	pub transaction_pool: Arc<RwLock<TransactionPool>>,
+	pub event_tx: mpsc::UnboundedSender<AppEvent>,
 }
 
 pub fn start_http_server_task(
 	wallet: Arc<RwLock<Wallet>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
+	event_tx: mpsc::UnboundedSender<AppEvent>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {
-		let state = AppState { wallet, transaction_pool };
+		let state = AppState { wallet, transaction_pool, event_tx };
 
 		let app: Router = Router::new()
 			.nest(

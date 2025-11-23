@@ -1,3 +1,4 @@
+use core::slice;
 /**
  * Testing libp2p communicator singleton class with terminal chat.
  */
@@ -5,14 +6,16 @@ use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::io::{self, AsyncBufReadExt};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
+use crate::channels::AppEvent;
 use crate::transaction_pool::TransactionPool;
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
 	comms_debounce::Debouncer,
+	constants,
 	p2p_mdns_bc_coms::{self, P2PBehaviourEvent, TopicEnum},
 };
 
@@ -20,6 +23,7 @@ use crate::{
 pub fn start_p2p_task(
 	blockchain: Arc<RwLock<Blockchain>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
+	mut event_rx: mpsc::UnboundedReceiver<AppEvent>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {
 		let connection = p2p_mdns_bc_coms::P2PConnection::global().await;
@@ -29,12 +33,17 @@ pub fn start_p2p_task(
 		println!("=================\n");
 
 		let mut stdin = io::BufReader::new(io::stdin()).lines();
-		let topic = Arc::new(gossipsub::IdentTopic::new(
+
+		let chain_topic = Arc::new(gossipsub::IdentTopic::new(
 			TopicEnum::Blockchain.to_string(),
+		));
+		let txn_topic = Arc::new(gossipsub::IdentTopic::new(
+			TopicEnum::Transactions.to_string(),
 		));
 
 		let mut heartbeat = interval(Duration::from_millis(100));
-		let mut debouncer = Debouncer::new(Duration::from_secs(10));
+		let mut debouncer_brodcast_chain =
+			Debouncer::new(Duration::from_secs(10));
 
 		/*
 			* In loop have to do a few concurrent things.
@@ -61,12 +70,25 @@ pub fn start_p2p_task(
 							break;
 						}
 						if connection.get_connected_peers_len().await > 0 && !input.is_empty() {
-							match connection.publish(&topic, input.as_bytes()).await {
+							match connection.publish(&chain_topic, input.as_bytes()).await {
 								Ok(_) => println!("Message sent!"),
 								Err(e) => eprintln!("Failed to send: {}", e),
 							}
 						} else if !input.is_empty() {
 							println!("No connected peers yet. Waiting for automatic discovery...");
+						}
+					}
+				},
+				event_channel = event_rx.recv() => {
+					match event_channel {
+						Some(AppEvent::BroadcastMessage(message)) => {
+							if message.action == constants::BROADCAST_TXN_POOL {
+								let txn = transaction_pool.read().await;
+							}
+							println!("Message {message:?}")
+						}
+						_ => {
+							continue;
 						}
 					}
 				},
@@ -86,13 +108,17 @@ pub fn start_p2p_task(
 								match topic_enum {
 									TopicEnum::Blockchain => {
 										// chain replacement.
-										if let Ok(new_chain) = Blockchain::chain_from_bytes(&message.data) {
+										if let Ok(new_chain) = Blockchain::from_bytes(&message.data) {
 											blockchain.write().await.replace_chain(new_chain);
 										}
 									},
-									_ => {
-										println!("Unknown channel message.");
+									TopicEnum::Transactions => {
+										println!("Update pool.")
+
 									}
+									// _ => {
+									// 	println!("Unknown channel message.");
+									// }
 								}
 							}
 							println!(">! {:#?}", message);
@@ -115,7 +141,7 @@ pub fn start_p2p_task(
 						}
 						SwarmEvent::ConnectionEstablished { peer_id, .. } => {
 							connection.add_connected_peer(&peer_id).await;
-							debouncer.on_event();
+							debouncer_brodcast_chain.on_event();
 						}
 						SwarmEvent::ConnectionClosed { peer_id, .. } => {
 							connection.closed_connection(&peer_id).await;
@@ -125,11 +151,11 @@ pub fn start_p2p_task(
 				},
 				_ = heartbeat.tick() => {} // unblock timed tasks by heartbeat. other continuous option: tokio::task::yield_now().await;
 			}
-			if debouncer.check() {
-				let topic = topic.clone();
+			if debouncer_brodcast_chain.check() {
+				let topic = chain_topic.clone();
 				let blockchain_quard = blockchain.read().await;
 				if let Ok(bytes_chain) =
-					Blockchain::chain_to_bytes(&blockchain_quard.chain)
+					Blockchain::to_bytes(&blockchain_quard.chain)
 				{
 					match connection.publish(&topic, &bytes_chain).await {
 						Ok(_) => println!("Debounced blockchain published!"),
