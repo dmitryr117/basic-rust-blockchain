@@ -10,6 +10,7 @@ pub mod p2p_mdns_singleton;
 pub mod p2p_task;
 pub mod traits;
 pub mod transaction;
+pub mod transaction_miner;
 pub mod transaction_pool;
 pub mod txn_input;
 pub mod utils;
