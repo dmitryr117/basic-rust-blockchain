@@ -1,9 +1,13 @@
-use crate::transaction::Transaction;
+use crate::{
+	constants::{U32_SIZE, UUID_SIZE},
+	traits::BinarySerializable,
+	transaction::Transaction,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct TransactionPool {
 	pub transaction_map: HashMap<Uuid, Transaction>,
 }
@@ -18,6 +22,17 @@ impl TransactionPool {
 			.insert(transaction.id, transaction);
 	}
 
+	pub fn update_transaction_pool(
+		&mut self,
+		transaction_pool: TransactionPool,
+	) {
+		for (uuid, transaction) in transaction_pool.transaction_map {
+			if !self.transaction_map.contains_key(&uuid) {
+				self.transaction_map.insert(uuid, transaction);
+			}
+		}
+	}
+
 	pub fn existing_transaction_mut(
 		&mut self,
 		input_address: &Vec<u8>,
@@ -30,6 +45,66 @@ impl TransactionPool {
 			Some((_, transaction)) => Some(transaction),
 			None => None,
 		}
+	}
+}
+
+impl BinarySerializable for TransactionPool {
+	fn to_bytes(
+		&self,
+	) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+		let mut bytes: Vec<u8> = Vec::new();
+		for (uuid, txn) in &self.transaction_map {
+			bytes.extend(uuid.to_bytes_le());
+			let txn_bytes = txn.to_bytes()?;
+			bytes.extend((txn_bytes.len() as u32).to_le_bytes());
+			bytes.extend(txn_bytes);
+		}
+		Ok(bytes)
+	}
+
+	fn from_bytes(
+		bytes: &[u8],
+	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+		let mut transaction_map: HashMap<Uuid, Transaction> = HashMap::new();
+		let mut cursor: usize = 0;
+
+		loop {
+			if bytes.len() <= cursor {
+				break;
+			}
+			// decodee uuid
+			if bytes.len() < cursor + UUID_SIZE {
+				return Err("Insufficient bytes for uuid.".into());
+			}
+			let uuid_bytes: [u8; UUID_SIZE] =
+				bytes[cursor..cursor + UUID_SIZE].try_into()?;
+			let uuid = Uuid::from_bytes_le(uuid_bytes);
+
+			cursor += UUID_SIZE;
+
+			if bytes.len() < cursor + UUID_SIZE {
+				return Err("Insufficient bytes for txn_size.".into());
+			}
+			let txn_size_bytes: [u8; U32_SIZE] =
+				bytes[cursor..cursor + U32_SIZE].try_into()?;
+			let txn_size = u32::from_le_bytes(txn_size_bytes);
+
+			if bytes.len() < cursor + txn_size as usize {
+				return Err("Insufficient bytes for transaction".into());
+			}
+			let transaction = Transaction::from_bytes(
+				&bytes[cursor..cursor + txn_size as usize],
+			)?;
+
+			if let None = transaction_map.insert(uuid, transaction) {
+				return Err("Unable to create transaction map.".into());
+			};
+
+			cursor += txn_size as usize;
+		}
+		let mut transaction_pool = TransactionPool::new();
+		transaction_pool.transaction_map = transaction_map;
+		Ok(transaction_pool)
 	}
 }
 
@@ -95,6 +170,22 @@ mod test_transaction_pool {
 				.existing_transaction_mut(&sender_wallet.public_key)
 				.expect("Transaction should exist, but got None");
 			assert_eq!(*txn, transaction)
+		}
+	}
+
+	mod test_byte_encode_decode {
+		use super::*;
+		use crate::traits::BinarySerializable;
+		use pretty_assertions::assert_eq;
+
+		#[test]
+		fn test_encode_decode() {
+			let (transaction_pool, _, _) = super::before_each();
+
+			let bytes = transaction_pool.to_bytes().unwrap();
+			let decoded = TransactionPool::from_bytes(&bytes).unwrap();
+
+			assert_eq!(transaction_pool, decoded);
 		}
 	}
 }

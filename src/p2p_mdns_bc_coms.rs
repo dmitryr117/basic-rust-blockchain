@@ -27,8 +27,10 @@ type SwarmEventType = SwarmEvent<P2PBehaviourEvent>;
 pub enum TopicEnum {
 	#[strum(serialize = "blockchain")]
 	Blockchain,
-	#[strum(serialize = "transactions")]
-	Transactions,
+	#[strum(serialize = "transaction")]
+	Transaction,
+	#[strum(serialize = "transaction_pool")]
+	TransactionPool,
 }
 
 pub struct P2PConnection {

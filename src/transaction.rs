@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::constants::{U32_SIZE, UUID_SIZE};
+use crate::traits::BinarySerializable;
 use crate::txn_input::TransactionInput;
 use crate::utils::output_map_to_bytes;
 use crate::wallet::Wallet;
@@ -127,8 +128,12 @@ impl Transaction {
 
 		Ok(())
 	}
+}
 
-	pub fn to_bytes(&self) -> Result<Vec<u8>, bincode::error::EncodeError> {
+impl BinarySerializable for Transaction {
+	fn to_bytes(
+		&self,
+	) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
 		let mut bytes: Vec<u8> = Vec::new();
 		let config = bincode::config::standard();
 		bytes.extend(self.id.to_bytes_le());
@@ -143,8 +148,8 @@ impl Transaction {
 		Ok(bytes)
 	}
 
-	pub fn from_bytes(
-		bytes: &Vec<u8>,
+	fn from_bytes(
+		bytes: &[u8],
 	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
 		let config = bincode::config::standard();
 		let mut cursor: usize = 0;

@@ -10,6 +10,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use crate::channels::AppEvent;
+use crate::traits::BinarySerializable;
 use crate::transaction::Transaction;
 use crate::transaction_pool::TransactionPool;
 use crate::{
@@ -38,7 +39,10 @@ pub fn start_p2p_task(
 			TopicEnum::Blockchain.to_string(),
 		));
 		let txn_topic = Arc::new(gossipsub::IdentTopic::new(
-			TopicEnum::Transactions.to_string(),
+			TopicEnum::Transaction.to_string(),
+		));
+		let txn_pool_topic = Arc::new(gossipsub::IdentTopic::new(
+			TopicEnum::TransactionPool.to_string(),
 		));
 
 		let mut heartbeat = interval(Duration::from_millis(100));
@@ -120,10 +124,16 @@ pub fn start_p2p_task(
 											blockchain.write().await.replace_chain(new_chain);
 										}
 									},
-									TopicEnum::Transactions => {
+									TopicEnum::Transaction => {
 										if let Ok(transaction) = Transaction::from_bytes(&message.data) {
 											let mut txn_pool = transaction_pool.write().await;
 											txn_pool.set_transaction(transaction);
+										}
+									}
+									TopicEnum::TransactionPool => {
+										if let Ok(incoming_txn_pool) = TransactionPool::from_bytes(&message.data) {
+											let mut txn_pool = transaction_pool.write().await;
+											txn_pool.update_transaction_pool(incoming_txn_pool);
 										}
 									}
 								}
@@ -158,14 +168,30 @@ pub fn start_p2p_task(
 				_ = heartbeat.tick() => {} // unblock timed tasks by heartbeat. other continuous option: tokio::task::yield_now().await;
 			}
 			if debouncer_brodcast_chain.check() {
-				let topic = chain_topic.clone();
 				let blockchain_quard = blockchain.read().await;
 				if let Ok(bytes_chain) =
 					Blockchain::to_bytes(&blockchain_quard.chain)
 				{
-					match connection.publish(&topic, &bytes_chain).await {
+					match connection
+						.publish(&chain_topic, &bytes_chain)
+						.await
+					{
 						Ok(_) => println!("Debounced blockchain published!"),
 						Err(e) => println!("Failed to send: {}", e),
+					}
+				}
+				let txn_pool = transaction_pool.read().await;
+				if let Ok(bytes_txn_pool) = txn_pool.to_bytes() {
+					match connection
+						.publish(&txn_pool_topic, &bytes_txn_pool)
+						.await
+					{
+						Ok(_) => {
+							println!("Debounced transaction pool published!")
+						}
+						Err(e) => {
+							println!("Failed to send transaction pool: {}", e)
+						}
 					}
 				}
 			}

@@ -375,6 +375,7 @@ mod transaction_tests {
 
 	mod test_byte_encode_decode {
 		use super::*;
+		use cryptochain::traits::BinarySerializable;
 		use pretty_assertions::assert_eq;
 
 		#[test]
