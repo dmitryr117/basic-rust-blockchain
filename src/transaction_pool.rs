@@ -7,7 +7,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TransactionPool {
 	pub transaction_map: HashMap<Uuid, Transaction>,
 }
@@ -82,12 +82,15 @@ impl BinarySerializable for TransactionPool {
 
 			cursor += UUID_SIZE;
 
-			if bytes.len() < cursor + UUID_SIZE {
+			// transaction size
+			if bytes.len() < cursor + U32_SIZE {
 				return Err("Insufficient bytes for txn_size.".into());
 			}
 			let txn_size_bytes: [u8; U32_SIZE] =
 				bytes[cursor..cursor + U32_SIZE].try_into()?;
 			let txn_size = u32::from_le_bytes(txn_size_bytes);
+
+			cursor += U32_SIZE;
 
 			if bytes.len() < cursor + txn_size as usize {
 				return Err("Insufficient bytes for transaction".into());
@@ -96,9 +99,7 @@ impl BinarySerializable for TransactionPool {
 				&bytes[cursor..cursor + txn_size as usize],
 			)?;
 
-			if let None = transaction_map.insert(uuid, transaction) {
-				return Err("Unable to create transaction map.".into());
-			};
+			transaction_map.insert(uuid, transaction);
 
 			cursor += txn_size as usize;
 		}

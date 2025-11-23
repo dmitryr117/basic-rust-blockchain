@@ -12,7 +12,7 @@ use serde_with::serde_as;
 use uuid::Uuid;
 
 #[serde_as]
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Eq)]
 pub struct Transaction {
 	pub id: Uuid,
 	pub amount: u32,
