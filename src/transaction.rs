@@ -144,8 +144,8 @@ impl Transaction {
 	}
 
 	pub fn from_bytes(
-		bytes: Vec<u8>,
-	) -> Result<Self, Box<dyn std::error::Error>> {
+		bytes: &Vec<u8>,
+	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
 		let config = bincode::config::standard();
 		let mut cursor: usize = 0;
 

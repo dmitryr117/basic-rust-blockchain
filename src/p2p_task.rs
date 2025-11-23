@@ -1,4 +1,3 @@
-use core::slice;
 /**
  * Testing libp2p communicator singleton class with terminal chat.
  */
@@ -11,6 +10,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use crate::channels::AppEvent;
+use crate::transaction::Transaction;
 use crate::transaction_pool::TransactionPool;
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
@@ -83,7 +83,15 @@ pub fn start_p2p_task(
 					match event_channel {
 						Some(AppEvent::BroadcastMessage(message)) => {
 							if message.action == constants::BROADCAST_TXN_POOL {
-								let txn = transaction_pool.read().await;
+								let txn_pool = transaction_pool.read().await;
+								if let Some(transaction) = txn_pool.transaction_map.get(&message.uuid) {
+									if let Ok(encoded_txn) = transaction.to_bytes() {
+										match connection.publish(&txn_topic, &encoded_txn).await {
+											Ok(_) => println!("Transaction published!"),
+											Err(e) => println!("Failed to send: {}", e),
+										}
+									}
+								}
 							}
 							println!("Message {message:?}")
 						}
@@ -113,15 +121,13 @@ pub fn start_p2p_task(
 										}
 									},
 									TopicEnum::Transactions => {
-										println!("Update pool.")
-
+										if let Ok(transaction) = Transaction::from_bytes(&message.data) {
+											let mut txn_pool = transaction_pool.write().await;
+											txn_pool.set_transaction(transaction);
+										}
 									}
-									// _ => {
-									// 	println!("Unknown channel message.");
-									// }
 								}
 							}
-							println!(">! {:#?}", message);
 						}
 						SwarmEvent::NewListenAddr { address, .. } => {
 							println!("* Listening on: {}", address);

@@ -17,6 +17,8 @@ use cryptochain::wallet::Wallet;
 
 #[tokio::main]
 async fn main() {
+	let port: u32 = 3005;
+
 	let (event_tx, event_rx) = create_unbounded_channel();
 	let blockchain = Arc::new(RwLock::new(Blockchain::new()));
 	let wallet =
@@ -26,6 +28,7 @@ async fn main() {
 	let p2p_handle =
 		start_p2p_task(blockchain.clone(), transaction_pool.clone(), event_rx);
 	let http_server_handle = start_http_server_task(
+		port,
 		wallet.clone(),
 		transaction_pool.clone(),
 		event_tx,

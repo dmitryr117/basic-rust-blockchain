@@ -388,7 +388,7 @@ mod transaction_tests {
 			);
 
 			let bytes = transaction.to_bytes().unwrap();
-			let decoded = Transaction::from_bytes(bytes).unwrap();
+			let decoded = Transaction::from_bytes(&bytes).unwrap();
 
 			assert_eq!(transaction, decoded);
 		}

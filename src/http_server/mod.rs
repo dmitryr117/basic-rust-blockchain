@@ -21,6 +21,7 @@ pub struct AppState {
 }
 
 pub fn start_http_server_task(
+	port: u32,
 	wallet: Arc<RwLock<Wallet>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
 	event_tx: mpsc::UnboundedSender<AppEvent>,
@@ -38,9 +39,10 @@ pub fn start_http_server_task(
 			)
 			.with_state(state);
 
-		let listener = tokio::net::TcpListener::bind("localhost:3005")
-			.await
-			.expect("Failed to bind to port 3005");
+		let listener =
+			tokio::net::TcpListener::bind(format!("localhost:{port}"))
+				.await
+				.expect(&format!("Failed to bind to port {port}"));
 
 		axum::serve(listener, app)
 			.await
