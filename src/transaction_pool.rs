@@ -46,6 +46,17 @@ impl TransactionPool {
 			None => None,
 		}
 	}
+
+	pub fn get_valid_transactions(&self) -> HashMap<&Uuid, &Transaction> {
+		let mut valid_transactions: HashMap<&Uuid, &Transaction> =
+			HashMap::new();
+		for (uuid, txn) in self.transaction_map.iter() {
+			if txn.is_valid() {
+				valid_transactions.insert(uuid, txn);
+			}
+		}
+		valid_transactions
+	}
 }
 
 impl BinarySerializable for TransactionPool {
@@ -171,6 +182,49 @@ mod test_transaction_pool {
 				.existing_transaction_mut(&sender_wallet.public_key)
 				.expect("Transaction should exist, but got None");
 			assert_eq!(*txn, transaction)
+		}
+	}
+
+	mod get_valid_transactions {
+		use crate::utils::output_map_to_bytes;
+
+		use super::*;
+		use pretty_assertions::assert_eq;
+
+		fn before_each() -> TransactionPool {
+			let (mut transaction_pool, _transaction, sender_wallet) =
+				super::before_each();
+			for i in 0..10 {
+				let recipient_wallet =
+					Wallet::new(&Keypair::generate_ed25519());
+				let recipient_pk = &recipient_wallet.public_key;
+				let amount = 60;
+				let mut transaction =
+					Transaction::new(&sender_wallet, &recipient_pk, amount);
+				if i % 3 == 0 {
+					transaction.input.amount = 999999;
+				} else if i % 3 == 1 {
+					let invalid_wallet =
+						Wallet::new(&Keypair::generate_ed25519());
+					let output_map_bytes =
+						output_map_to_bytes(&transaction.output_map);
+
+					transaction.input.signature = invalid_wallet
+						.sign(&output_map_bytes)
+						.expect("Unable to sign");
+				}
+				transaction_pool.set_transaction(transaction);
+			}
+			transaction_pool
+		}
+
+		#[test]
+		fn get_valid_transactions() {
+			let transaction_pool = before_each();
+
+			let valid_transactions = transaction_pool.get_valid_transactions();
+
+			assert_eq!(valid_transactions.len(), 3);
 		}
 	}
 
