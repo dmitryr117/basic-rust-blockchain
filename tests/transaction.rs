@@ -372,4 +372,25 @@ mod transaction_tests {
 			assert_eq!(total_sender_amount, first_sender_amount - next_amount);
 		}
 	}
+
+	mod test_byte_encode_decode {
+		use super::*;
+		use pretty_assertions::assert_eq;
+
+		#[test]
+		fn test_encode_decode() {
+			let (sender_wallet, recipient_wallet, amount) =
+				super::before_each();
+			let transaction = Transaction::new(
+				&sender_wallet,
+				&recipient_wallet.public_key,
+				amount,
+			);
+
+			let bytes = transaction.to_bytes().unwrap();
+			let decoded = Transaction::from_bytes(bytes).unwrap();
+
+			assert_eq!(transaction, decoded);
+		}
+	}
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::constants::{U32_SIZE, UUID_SIZE};
 use crate::txn_input::TransactionInput;
 use crate::utils::output_map_to_bytes;
 use crate::wallet::Wallet;
@@ -7,7 +8,6 @@ use libp2p::identity::PublicKey;
 use rand::Rng;
 use serde::Serialize;
 use serde_with::serde_as;
-use std::mem::size_of;
 use uuid::Uuid;
 
 #[serde_as]
@@ -145,26 +145,68 @@ impl Transaction {
 
 	pub fn from_bytes(
 		bytes: Vec<u8>,
-	) -> Result<(), Box<dyn std::error::Error>> {
+	) -> Result<Self, Box<dyn std::error::Error>> {
 		let config = bincode::config::standard();
-		let usize_size = size_of::<usize>();
 		let mut cursor: usize = 0;
 
-		if bytes.len() < cursor + 16 {
+		if bytes.len() < cursor + UUID_SIZE {
 			return Err("Insufficient bytes for uuid.".into());
 		}
-		let uuid_bytes: [u8; 16] = bytes[cursor..cursor + 16].try_into()?;
+		let uuid_bytes: [u8; UUID_SIZE] =
+			bytes[cursor..cursor + UUID_SIZE].try_into()?;
 		let id = Uuid::from_bytes_le(uuid_bytes);
 
-		cursor += 16;
+		cursor += UUID_SIZE;
 
-		if bytes.len() < cursor + usize_size {
+		if bytes.len() < cursor + U32_SIZE {
 			return Err("Insufficient bytes for amount.".into());
 		}
-		let amount_bytes: Vec<u8> =
-			bytes[cursor..cursor + usize_size].try_into()?;
+		let amount_bytes: [u8; U32_SIZE] =
+			bytes[cursor..cursor + U32_SIZE].try_into()?;
+		let amount = u32::from_le_bytes(amount_bytes);
 
-		// bincode::encode_to_vec(self, config)
-		Ok(())
+		cursor += U32_SIZE;
+
+		if bytes.len() < cursor + U32_SIZE {
+			return Err("Insufficient bytes for input size.".into());
+		}
+
+		let input_size_bytes: [u8; U32_SIZE] =
+			bytes[cursor..cursor + U32_SIZE].try_into()?;
+		let input_size = u32::from_le_bytes(input_size_bytes);
+
+		cursor += U32_SIZE;
+
+		if bytes.len() < cursor + input_size as usize {
+			return Err("Insufficient bytes for input.".into());
+		}
+
+		let input_bytes: Vec<u8> =
+			bytes[cursor..cursor + input_size as usize].try_into()?;
+		let (input, _bytes): (TransactionInput, usize) =
+			bincode::decode_from_slice(&input_bytes, config)?;
+
+		cursor += input_size as usize;
+
+		if bytes.len() < cursor + U32_SIZE {
+			return Err("Insufficient bytes for output map size.".into());
+		}
+
+		let output_map_size_bytes: [u8; U32_SIZE] =
+			bytes[cursor..cursor + U32_SIZE].try_into()?;
+		let output_map_size = u32::from_le_bytes(output_map_size_bytes);
+
+		cursor += U32_SIZE;
+
+		if bytes.len() < cursor + output_map_size as usize {
+			return Err("Insufficient bytes for output map.".into());
+		}
+
+		let output_map_bytes: Vec<u8> =
+			bytes[cursor..cursor + output_map_size as usize].try_into()?;
+		let (output_map, _bytes): (HashMap<Vec<u8>, u32>, usize) =
+			bincode::decode_from_slice(&output_map_bytes, config)?;
+
+		Ok(Self { id, amount, input, output_map })
 	}
 }
