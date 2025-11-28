@@ -373,6 +373,31 @@ mod transaction_tests {
 		}
 	}
 
+	mod test_reward_transaction {
+		use super::*;
+		use cryptochain::config::{MINING_REWARD, REWARD_INPUT_ADDRESS};
+		use pretty_assertions::assert_eq;
+
+		#[test]
+		fn test_create_txn_with_reward_input() {
+			let (_, miner_wallet, _) = super::before_each();
+			let reward_txn = Transaction::new_reward_txn(
+				&miner_wallet,
+				&REWARD_INPUT_ADDRESS,
+				MINING_REWARD,
+			);
+			assert_eq!(reward_txn.amount, MINING_REWARD);
+			assert_eq!(reward_txn.input.amount, 0);
+			assert_eq!(reward_txn.input.sender_address, &REWARD_INPUT_ADDRESS);
+			assert_eq!(reward_txn.output_map.len(), 1);
+			let output = reward_txn
+				.output_map
+				.get(&miner_wallet.public_key)
+				.unwrap();
+			assert_eq!(*output, MINING_REWARD);
+		}
+	}
+
 	mod test_byte_encode_decode {
 		use super::*;
 		use cryptochain::traits::BinarySerializable;

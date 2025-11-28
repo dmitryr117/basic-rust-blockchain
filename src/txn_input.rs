@@ -35,4 +35,15 @@ impl TransactionInput {
 			signature,
 		}
 	}
+
+	pub fn new_reward_input(sender_pk: &[u8]) -> Self {
+		let timestamp = Utc::now().timestamp_millis();
+
+		Self {
+			timestamp,
+			amount: 0,
+			sender_address: sender_pk.to_vec().clone(),
+			signature: vec![],
+		}
+	}
 }

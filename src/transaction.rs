@@ -28,9 +28,26 @@ impl Transaction {
 		amount: u32,
 	) -> Self {
 		let id = Self::generate_uuid_v1();
-		let output_map =
-			Transaction::create_output_map(sender_wallet, recipient_pk, amount);
+		let output_map = Transaction::create_output_map(
+			&sender_wallet,
+			recipient_pk,
+			amount,
+		);
 		let input = TransactionInput::new(sender_wallet, &output_map);
+		Self { id, amount, output_map, input }
+	}
+
+	pub fn new_reward_txn(
+		miner_wallet: &Wallet,
+		input_addr: &[u8],
+		amount: u32,
+	) -> Self {
+		let id = Self::generate_uuid_v1();
+		let output_map = Transaction::create_reward_output_map(
+			&miner_wallet.public_key,
+			amount,
+		);
+		let input = TransactionInput::new_reward_input(input_addr);
 		Self { id, amount, output_map, input }
 	}
 
@@ -43,16 +60,27 @@ impl Transaction {
 
 	pub fn create_output_map(
 		sender_wallet: &Wallet,
-		recipient_pk: &Vec<u8>,
+		recipient_pk: &[u8],
 		amount: u32,
 	) -> HashMap<Vec<u8>, u32> {
 		let mut output_map: HashMap<Vec<u8>, u32> = HashMap::new();
 
-		output_map.insert(recipient_pk.clone(), amount);
+		output_map.insert(recipient_pk.to_vec().clone(), amount);
 		output_map.insert(
 			sender_wallet.public_key.clone(),
 			sender_wallet.balance - amount,
 		);
+
+		output_map
+	}
+
+	pub fn create_reward_output_map(
+		recipient_pk: &[u8],
+		amount: u32,
+	) -> HashMap<Vec<u8>, u32> {
+		let mut output_map: HashMap<Vec<u8>, u32> = HashMap::new();
+
+		output_map.insert(recipient_pk.to_vec().clone(), amount);
 
 		output_map
 	}

@@ -8,3 +8,6 @@ pub const GENESIS_DATA: [&str; 1] = ["genesis_data"];
 pub const GENESIS_DIFFICULTY: u32 = 5;
 pub const GENESIS_NONCE: u32 = 0;
 pub const STARTING_BALANCE: u32 = 1000;
+
+pub const REWARD_INPUT_ADDRESS: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+pub const MINING_REWARD: u32 = 5;

@@ -56,11 +56,11 @@ impl Wallet {
 		)
 	}
 
-	pub fn get_peer_id(&self) -> String {
-		let public_key = PublicKey::try_decode_protobuf(&self.public_key)
-			.expect("Failed to dekode PK protobuf");
-		public_key.to_peer_id().to_string()
-	}
+	// pub fn get_peer_id(&self) -> String {
+	// 	let public_key = PublicKey::try_decode_protobuf(&self.public_key)
+	// 		.expect("Failed to dekode PK protobuf");
+	// 	public_key.to_peer_id().to_string()
+	// }
 
 	pub fn verify_signature(
 		public_key: &Vec<u8>,
