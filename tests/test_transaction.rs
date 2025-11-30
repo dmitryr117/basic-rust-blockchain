@@ -382,7 +382,7 @@ mod transaction_tests {
 		fn test_create_txn_with_reward_input() {
 			let (_, miner_wallet, _) = super::before_each();
 			let reward_txn = Transaction::new_reward_txn(
-				&miner_wallet,
+				&miner_wallet.public_key,
 				&REWARD_INPUT_ADDRESS,
 				MINING_REWARD,
 			);

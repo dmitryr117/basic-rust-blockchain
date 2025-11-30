@@ -38,15 +38,13 @@ impl Transaction {
 	}
 
 	pub fn new_reward_txn(
-		miner_wallet: &Wallet,
+		miner_wallet_pk: &[u8],
 		input_addr: &[u8],
 		amount: u32,
 	) -> Self {
 		let id = Self::generate_uuid_v1();
-		let output_map = Transaction::create_reward_output_map(
-			&miner_wallet.public_key,
-			amount,
-		);
+		let output_map =
+			Transaction::create_reward_output_map(&miner_wallet_pk, amount);
 		let input = TransactionInput::new_reward_input(input_addr);
 		Self { id, amount, output_map, input }
 	}
