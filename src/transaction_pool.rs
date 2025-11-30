@@ -1,4 +1,5 @@
 use crate::{
+	blockchain::Blockchain,
 	constants::{U32_SIZE, UUID_SIZE},
 	traits::BinarySerializable,
 	transaction::Transaction,
@@ -56,6 +57,20 @@ impl TransactionPool {
 			}
 		}
 		valid_transactions
+	}
+
+	pub fn clear(&mut self) {
+		self.transaction_map.clear();
+	}
+
+	pub fn clear_blockchain_transactions(&mut self, blockchain: &Blockchain) {
+		self.transaction_map.retain(|uuid, _| {
+			!blockchain
+				.chain
+				.iter()
+				.rev()
+				.any(|block| uuid.to_string() == block.data[0])
+		});
 	}
 }
 
@@ -241,6 +256,60 @@ mod test_transaction_pool {
 			let decoded = TransactionPool::from_bytes(&bytes).unwrap();
 
 			assert_eq!(transaction_pool, decoded);
+		}
+	}
+
+	mod test_clear_transactions {
+		use std::collections::HashMap;
+
+		use crate::{
+			blockchain::{Blockchain, BlockchainTr},
+			transaction::Transaction,
+			wallet::Wallet,
+		};
+		use libp2p::identity::Keypair;
+		use pretty_assertions::assert_eq;
+		use uuid::Uuid;
+
+		#[test]
+		fn test_clear_all_transactions() {
+			let (mut transaction_pool, _, _) = super::before_each();
+			transaction_pool.clear();
+
+			assert_eq!(transaction_pool.transaction_map.len(), 0);
+		}
+
+		#[test]
+		fn test_clear_blockchain_transactions() {
+			let (mut transaction_pool, _, _) = super::before_each();
+			let mut blockchain = Blockchain::new();
+			let mut expected_txn_map: HashMap<Uuid, Transaction> =
+				HashMap::new();
+
+			for i in 0..6 {
+				let sender_wallet = Wallet::new(&Keypair::generate_ed25519());
+				let recipient_wallet =
+					Wallet::new(&Keypair::generate_ed25519());
+				let transaction = Transaction::new(
+					&sender_wallet,
+					&recipient_wallet.public_key,
+					50,
+				);
+				// DR - Need to change later as blockchain will need to record transaction in dirrerent format.
+				let txn_uuid = transaction.id;
+				transaction_pool.set_transaction(transaction.clone());
+				if i % 2 == 0 {
+					let data = vec![txn_uuid.to_string()];
+					blockchain.add_block(data);
+				} else {
+					expected_txn_map.insert(txn_uuid, transaction);
+				}
+			}
+			transaction_pool.clear_blockchain_transactions(&blockchain);
+
+			assert_eq!(transaction_pool.transaction_map.len(), 3);
+			assert_eq!(expected_txn_map.len(), 3);
+			assert_eq!(transaction_pool.transaction_map, expected_txn_map);
 		}
 	}
 }
