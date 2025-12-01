@@ -45,11 +45,7 @@ impl Block {
 
 impl BlockTr<Block> for Block {
 	fn genesis() -> Self {
-		let genesis_txn = Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			0,
-		);
+		let genesis_txn = Transaction::genesis_txn();
 		let data = vec![genesis_txn];
 		Self::new(
 			GENESIS_TS,
@@ -193,11 +189,7 @@ mod tests {
 	fn test_genesis() {
 		let genesis_block = Block::genesis();
 
-		let genesis_data = vec![Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			0,
-		)];
+		let genesis_data = vec![Transaction::genesis_txn()];
 		let comp_block = Block {
 			timestamp: GENESIS_TS,
 			last_hash: GENESIS_LAST_HASH.to_vec(),
@@ -210,26 +202,20 @@ mod tests {
 		assert_eq!(genesis_block, comp_block);
 	}
 
-	fn init_mined_block() -> (Block, Block) {
+	fn init_mined_block() -> (Block, Block, Vec<Transaction>) {
 		let last_block = Block::genesis();
 		let data = vec![Transaction::new_reward_txn(
 			&REWARD_INPUT_ADDRESS,
 			&REWARD_INPUT_ADDRESS,
 			50,
 		)];
-		let mined_block = Block::mine_block(data, &last_block);
-		(last_block, mined_block)
+		let mined_block = Block::mine_block(data.clone(), &last_block);
+		(last_block, mined_block, data)
 	}
 
 	#[test]
 	fn test_mine_block() {
-		let (last_block, mined_block) = init_mined_block();
-
-		let data = vec![Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			50,
-		)];
+		let (last_block, mined_block, data) = init_mined_block();
 
 		assert_eq!(last_block.hash, mined_block.last_hash);
 		assert_eq!(data, mined_block.data);
@@ -237,7 +223,7 @@ mod tests {
 
 	#[test]
 	fn hash_matches_difficulty() {
-		let (_, mined_block) = init_mined_block();
+		let (_, mined_block, _) = init_mined_block();
 
 		// -------------- Need to adjust this to work with bit zeros instead of byte zeros.
 		let difficulty = mined_block.difficulty;
@@ -262,7 +248,7 @@ mod tests {
 
 	#[test]
 	fn increase_difficulty_if_mined_too_fast() {
-		let (_, mined_block) = init_mined_block();
+		let (_, mined_block, _) = init_mined_block();
 		let ms_time = mined_block.timestamp + MINE_RATE as i64 - 100;
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
 		assert_eq!(new_difficulty, mined_block.difficulty + 1);
@@ -270,7 +256,7 @@ mod tests {
 
 	#[test]
 	fn decrease_difficulty_if_mined_too_slow() {
-		let (_, mut mined_block) = init_mined_block();
+		let (_, mut mined_block, _) = init_mined_block();
 		let ms_time = mined_block.timestamp + MINE_RATE as i64 + 100;
 		mined_block.difficulty = 2; // make sure that last block is > 1 for test
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
@@ -279,7 +265,7 @@ mod tests {
 
 	#[test]
 	fn adjust_difficulty_low_limit() {
-		let (_, mut mined_block) = init_mined_block();
+		let (_, mut mined_block, _) = init_mined_block();
 		let ms_time = mined_block.timestamp + MINE_RATE as i64 + 100;
 		mined_block.difficulty = 1; // make sure that last block is > 1 for test
 		let new_difficulty = Block::adjust_difficulty(&mined_block, ms_time);
@@ -322,7 +308,7 @@ mod tests {
 	fn jumped_difficulty() {
 		let mut blockchain = Blockchain::new();
 
-		let (genesis_block, _) = init_mined_block();
+		let (genesis_block, _, _) = init_mined_block();
 
 		let last_hash_hex = hex::encode(&genesis_block.hash);
 		let timestamp = Utc::now().timestamp_millis() as i64;

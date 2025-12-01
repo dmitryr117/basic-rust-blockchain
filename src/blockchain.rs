@@ -93,7 +93,7 @@ impl BlockchainTr for Blockchain {
 		}
 
 		if !Blockchain::is_valid_chain(&new_chain) {
-			eprintln!("New chain in Invalid!");
+			eprintln!("New chain is Invalid!");
 			return;
 		}
 		self.chain = new_chain;

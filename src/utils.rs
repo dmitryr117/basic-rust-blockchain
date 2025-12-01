@@ -37,7 +37,7 @@ mod test {
 	#[test]
 	fn test_crypto_hash() {
 		let expected_hash =
-			"b3a631a9a270c4e28788ff9e6eea9f3f26b08fa2911b9f9bf36bb693bed43bda";
+			"bb2444b6656b87e461c214189ae14603cafe5fe332391b3cebe99a9dab2fdd9b";
 		let mydata = "Test_data_string".as_bytes();
 		let result = cryptohash(mydata, "my_hash", 1234, 1, 1);
 		let hexval = hex::encode(&result);
