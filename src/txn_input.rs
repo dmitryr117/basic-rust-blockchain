@@ -1,13 +1,15 @@
 use bincode::{Decode, Encode};
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
 
 use crate::{utils::output_map_to_bytes, wallet::Wallet};
 
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Decode, Encode)]
+#[derive(
+	Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Decode, Encode,
+)]
 pub struct TransactionInput {
 	pub timestamp: i64,
 	pub amount: u32,

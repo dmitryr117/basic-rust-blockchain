@@ -7,12 +7,12 @@ use crate::utils::output_map_to_bytes;
 use crate::wallet::Wallet;
 use libp2p::identity::PublicKey;
 use rand::Rng;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use uuid::Uuid;
 
 #[serde_as]
-#[derive(Debug, PartialEq, Clone, Serialize, Eq)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Eq)]
 pub struct Transaction {
 	pub id: Uuid,
 	pub amount: u32,

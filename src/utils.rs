@@ -3,16 +3,22 @@ use std::collections::HashMap;
 use sha3::{Digest, Sha3_256};
 
 pub fn cryptohash(
-	data: &[String],
+	data: &[u8],
 	last_hash: &str,
 	timestamp: i64,
 	nonce: u32,
 	difficulty: u32,
 ) -> Vec<u8> {
 	let mut hasher = Sha3_256::new();
-	let data = data.join(":");
-	let new_data =
-		format!("{data}:{last_hash}:{timestamp}:{nonce}:{difficulty}");
+	// let data = data.join(":");
+	// let new_data =
+	// 	format!("{data}:{last_hash}:{timestamp}:{nonce}:{difficulty}");
+	let mut new_data: Vec<u8> = Vec::new();
+	new_data.extend(data);
+	new_data.extend(last_hash.as_bytes());
+	new_data.extend(timestamp.to_le_bytes());
+	new_data.extend(nonce.to_le_bytes());
+	new_data.extend(difficulty.to_be_bytes());
 	hasher.update(new_data);
 	hasher.finalize().to_vec()
 }
@@ -32,8 +38,8 @@ mod test {
 	fn test_crypto_hash() {
 		let expected_hash =
 			"b3a631a9a270c4e28788ff9e6eea9f3f26b08fa2911b9f9bf36bb693bed43bda";
-		let mydata = vec![String::from("mydata")];
-		let result = cryptohash(&mydata, "my_hash", 1234, 1, 1);
+		let mydata = "Test_data_string".as_bytes();
+		let result = cryptohash(mydata, "my_hash", 1234, 1, 1);
 		let hexval = hex::encode(&result);
 		assert_eq!(hexval, expected_hash);
 	}

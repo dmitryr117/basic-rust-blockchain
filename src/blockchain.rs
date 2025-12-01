@@ -1,11 +1,12 @@
 use crate::{
 	block::{Block, BlockTr},
+	transaction::Transaction,
 	utils::cryptohash,
 };
 
 // Also nbeed to load chain from file system if it exists.
 pub trait BlockchainTr {
-	fn add_block(&mut self, data: Vec<String>);
+	fn add_block(&mut self, data: Vec<Transaction>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>);
 	fn to_bytes(
 		chain: &Vec<Block>,
@@ -57,8 +58,14 @@ impl Blockchain {
 			}
 
 			let last_hash = hex::encode(last_hash);
-			let validated_hash =
-				cryptohash(data, &last_hash, timestamp, nonce, difficulty);
+			let data_bytes = Block::data_to_bytes(data);
+			let validated_hash = cryptohash(
+				&data_bytes,
+				&last_hash,
+				timestamp,
+				nonce,
+				difficulty,
+			);
 
 			if *hash != validated_hash {
 				return false;
@@ -69,7 +76,7 @@ impl Blockchain {
 }
 
 impl BlockchainTr for Blockchain {
-	fn add_block(&mut self, data: Vec<String>) {
+	fn add_block(&mut self, data: Vec<Transaction>) {
 		let last_block = self.chain.last().unwrap();
 		let new_block = Block::mine_block(data, last_block);
 		self.chain.push(new_block);
@@ -96,20 +103,23 @@ impl BlockchainTr for Blockchain {
 		chain: &Vec<Block>,
 	) -> Result<Vec<u8>, bincode::error::EncodeError> {
 		let config = bincode::config::standard();
-		bincode::encode_to_vec(chain, config)
+		bincode::serde::encode_to_vec(chain, config)
 	}
 
 	fn from_bytes(
 		bytes: &[u8],
 	) -> Result<Vec<Block>, bincode::error::DecodeError> {
 		let config = bincode::config::standard();
-		let (chain, _bytes_read) = bincode::decode_from_slice(bytes, config)?;
+		let (chain, _bytes_read) =
+			bincode::serde::decode_from_slice(bytes, config)?;
 		Ok(chain)
 	}
 }
 
 #[cfg(test)]
 mod test_blockchain {
+	use crate::config::REWARD_INPUT_ADDRESS;
+
 	use super::*;
 	use pretty_assertions::assert_eq;
 
@@ -127,7 +137,18 @@ mod test_blockchain {
 
 	#[test]
 	fn adds_new_block_to_chain() {
-		let new_data = vec![String::from("foo"), String::from("bar")];
+		let new_data = vec![
+			Transaction::new_reward_txn(
+				&REWARD_INPUT_ADDRESS,
+				&REWARD_INPUT_ADDRESS,
+				50,
+			),
+			Transaction::new_reward_txn(
+				&REWARD_INPUT_ADDRESS,
+				&REWARD_INPUT_ADDRESS,
+				50,
+			),
+		];
 		let mut blockchain = Blockchain::new();
 		blockchain.add_block(new_data.clone());
 		assert_eq!(blockchain.chain.last().unwrap().data, new_data);

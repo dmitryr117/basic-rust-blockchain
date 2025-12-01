@@ -1,28 +1,31 @@
-use bincode::{Decode, Encode};
 use std::usize;
 
 use crate::{
 	config::{
-		GENESIS_DATA, GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH,
-		GENESIS_NONCE, GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
+		GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH, GENESIS_NONCE,
+		GENESIS_TS, MINE_RATE, MINE_RATE_DELTA, REWARD_INPUT_ADDRESS,
 	},
+	traits::BinarySerializable,
+	transaction::Transaction,
 	utils::cryptohash,
 };
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 pub trait BlockTr<T> {
 	fn adjust_difficulty(last_block: &T, ms_time: i64) -> u32;
 	fn genesis() -> T;
-	fn mine_block(data: Vec<String>, last_block: &T) -> T;
+	fn mine_block(data: Vec<Transaction>, last_block: &T) -> T;
+	fn data_to_bytes(data: &Vec<Transaction>) -> Vec<u8>;
 	fn is_valid_bit_hash(hash: &[u8], difficulty: u32) -> bool;
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Block {
 	pub timestamp: i64,
 	pub last_hash: Vec<u8>,
 	pub hash: Vec<u8>,
-	pub data: Vec<String>,
+	pub data: Vec<Transaction>,
 	pub nonce: u32,
 	pub difficulty: u32,
 }
@@ -32,7 +35,7 @@ impl Block {
 		timestamp: i64,
 		last_hash: Vec<u8>,
 		hash: Vec<u8>,
-		data: Vec<String>,
+		data: Vec<Transaction>,
 		nonce: u32,
 		difficulty: u32,
 	) -> Self {
@@ -42,10 +45,12 @@ impl Block {
 
 impl BlockTr<Block> for Block {
 	fn genesis() -> Self {
-		let data = GENESIS_DATA
-			.iter()
-			.map(|item| item.to_string())
-			.collect();
+		let genesis_txn = Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			0,
+		);
+		let data = vec![genesis_txn];
 		Self::new(
 			GENESIS_TS,
 			GENESIS_LAST_HASH.to_vec(),
@@ -56,18 +61,26 @@ impl BlockTr<Block> for Block {
 		)
 	}
 
-	fn mine_block(data: Vec<String>, last_block: &Block) -> Block {
+	fn mine_block(data: Vec<Transaction>, last_block: &Block) -> Block {
 		let mut ms_time = Utc::now().timestamp_millis();
 		let last_hash = hex::encode(&last_block.hash);
 		let difficulty: u32 = Self::adjust_difficulty(last_block, ms_time);
 		let mut nonce: u32 = 0;
 		let mut new_hash: Vec<u8>;
 
+		// transaction vector to bytes
+		let mut txn_bytes: Vec<u8> = Vec::new();
+		data.iter().for_each(|item| {
+			if let Ok(data_bytes) = item.to_bytes() {
+				txn_bytes.extend(data_bytes);
+			}
+		});
+
 		loop {
 			nonce += 1;
 			ms_time = Utc::now().timestamp_millis();
 			new_hash =
-				cryptohash(&data, &last_hash, ms_time, nonce, difficulty);
+				cryptohash(&txn_bytes, &last_hash, ms_time, nonce, difficulty);
 			// let sector = new_hash.get(0..difficulty).unwrap();
 			// let comparator: Vec<u8> = vec![0; difficulty as usize];
 
@@ -129,6 +142,16 @@ impl BlockTr<Block> for Block {
 
 		true
 	}
+
+	fn data_to_bytes(data: &Vec<Transaction>) -> Vec<u8> {
+		let mut txn_bytes: Vec<u8> = Vec::new();
+		data.into_iter().for_each(|item| {
+			if let Ok(data_bytes) = item.to_bytes() {
+				txn_bytes.extend(data_bytes);
+			}
+		});
+		txn_bytes
+	}
 }
 
 #[cfg(test)]
@@ -145,7 +168,11 @@ mod tests {
 		let timestamp = 1234;
 		let last_hash = vec![1, 2, 3, 4];
 		let hash = vec![1, 2, 3, 4];
-		let data = vec![String::from("data")];
+		let data = vec![Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			50,
+		)];
 
 		let new_block = Block::new(
 			timestamp,
@@ -166,10 +193,11 @@ mod tests {
 	fn test_genesis() {
 		let genesis_block = Block::genesis();
 
-		let genesis_data = GENESIS_DATA
-			.iter()
-			.map(|item| item.to_string())
-			.collect();
+		let genesis_data = vec![Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			0,
+		)];
 		let comp_block = Block {
 			timestamp: GENESIS_TS,
 			last_hash: GENESIS_LAST_HASH.to_vec(),
@@ -184,7 +212,11 @@ mod tests {
 
 	fn init_mined_block() -> (Block, Block) {
 		let last_block = Block::genesis();
-		let data = vec![String::from("Mined Data")];
+		let data = vec![Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			50,
+		)];
 		let mined_block = Block::mine_block(data, &last_block);
 		(last_block, mined_block)
 	}
@@ -193,8 +225,14 @@ mod tests {
 	fn test_mine_block() {
 		let (last_block, mined_block) = init_mined_block();
 
+		let data = vec![Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			50,
+		)];
+
 		assert_eq!(last_block.hash, mined_block.last_hash);
-		assert_eq!(vec![String::from("Mined Data")], mined_block.data);
+		assert_eq!(data, mined_block.data);
 	}
 
 	#[test]
@@ -288,12 +326,23 @@ mod tests {
 
 		let last_hash_hex = hex::encode(&genesis_block.hash);
 		let timestamp = Utc::now().timestamp_millis() as i64;
-		let data: Vec<String> = vec![String::from("test")];
+		let data = vec![Transaction::new_reward_txn(
+			&REWARD_INPUT_ADDRESS,
+			&REWARD_INPUT_ADDRESS,
+			50,
+		)];
 		let nonce = 0;
 		let difficulty = 1;
 
-		let new_hash =
-			cryptohash(&data, &last_hash_hex, timestamp, nonce, difficulty);
+		let data_bytes = Block::data_to_bytes(&data);
+
+		let new_hash = cryptohash(
+			&data_bytes,
+			&last_hash_hex,
+			timestamp,
+			nonce,
+			difficulty,
+		);
 		let bad_block = Block::new(
 			timestamp,
 			genesis_block.hash.clone(),

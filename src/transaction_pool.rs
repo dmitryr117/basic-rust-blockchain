@@ -4,11 +4,11 @@ use crate::{
 	traits::BinarySerializable,
 	transaction::Transaction,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionPool {
 	pub transaction_map: HashMap<Uuid, Transaction>,
 }
@@ -48,14 +48,19 @@ impl TransactionPool {
 		}
 	}
 
-	pub fn get_valid_transactions(&self) -> HashMap<&Uuid, &Transaction> {
-		let mut valid_transactions: HashMap<&Uuid, &Transaction> =
-			HashMap::new();
+	pub fn get_valid_transactions(&self) -> Vec<Transaction> {
+		// let mut valid_transactions: Vec<&Transaction> = Vec::new();
+		let mut ordered_uuids: Vec<&Uuid> = Vec::new();
 		for (uuid, txn) in self.transaction_map.iter() {
 			if txn.is_valid() {
-				valid_transactions.insert(uuid, txn);
+				ordered_uuids.push(uuid);
 			}
 		}
+		ordered_uuids.sort();
+		let valid_transactions: Vec<Transaction> = ordered_uuids
+			.into_iter()
+			.filter_map(|k| self.transaction_map.get(k).cloned())
+			.collect();
 		valid_transactions
 	}
 
@@ -69,7 +74,7 @@ impl TransactionPool {
 				.chain
 				.iter()
 				.rev()
-				.any(|block| uuid.to_string() == block.data[0])
+				.any(|block| *uuid == block.data[0].id)
 		});
 	}
 }
@@ -299,7 +304,7 @@ mod test_transaction_pool {
 				let txn_uuid = transaction.id;
 				transaction_pool.set_transaction(transaction.clone());
 				if i % 2 == 0 {
-					let data = vec![txn_uuid.to_string()];
+					let data = vec![transaction];
 					blockchain.add_block(data);
 				} else {
 					expected_txn_map.insert(txn_uuid, transaction);
