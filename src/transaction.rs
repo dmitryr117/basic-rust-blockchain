@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::config::GENESIS_UUID;
 use crate::constants::{U32_SIZE, UUID_SIZE};
 use crate::traits::BinarySerializable;
 use crate::txn_input::TransactionInput;
@@ -47,17 +46,6 @@ impl Transaction {
 		let output_map =
 			Transaction::create_reward_output_map(&miner_wallet_pk, amount);
 		let input = TransactionInput::new_reward_input(input_addr);
-		Self { id, amount, output_map, input }
-	}
-
-	pub fn genesis_txn() -> Self {
-		let id = GENESIS_UUID;
-		let amount: u32 = 0;
-		let sender_addr: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-		let receiver_addr: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-		let output_map =
-			Transaction::create_reward_output_map(&receiver_addr, amount);
-		let input = TransactionInput::new_genesis_input(sender_addr);
 		Self { id, amount, output_map, input }
 	}
 

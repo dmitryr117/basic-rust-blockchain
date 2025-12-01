@@ -74,7 +74,7 @@ impl TransactionPool {
 				.chain
 				.iter()
 				.rev()
-				.any(|block| *uuid == block.data[0].id)
+				.any(|block| block.data.iter().any(|txn| *uuid == txn.id))
 		});
 	}
 }

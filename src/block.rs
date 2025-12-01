@@ -45,8 +45,7 @@ impl Block {
 
 impl BlockTr<Block> for Block {
 	fn genesis() -> Self {
-		let genesis_txn = Transaction::genesis_txn();
-		let data = vec![genesis_txn];
+		let data = vec![];
 		Self::new(
 			GENESIS_TS,
 			GENESIS_LAST_HASH.to_vec(),
@@ -189,7 +188,7 @@ mod tests {
 	fn test_genesis() {
 		let genesis_block = Block::genesis();
 
-		let genesis_data = vec![Transaction::genesis_txn()];
+		let genesis_data = vec![];
 		let comp_block = Block {
 			timestamp: GENESIS_TS,
 			last_hash: GENESIS_LAST_HASH.to_vec(),

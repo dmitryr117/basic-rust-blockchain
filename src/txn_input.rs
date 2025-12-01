@@ -48,15 +48,4 @@ impl TransactionInput {
 			signature: vec![],
 		}
 	}
-
-	pub fn new_genesis_input(sender_pk: &[u8]) -> Self {
-		let timestamp = 0;
-
-		Self {
-			timestamp,
-			amount: 0,
-			sender_address: sender_pk.to_vec().clone(),
-			signature: vec![],
-		}
-	}
 }
