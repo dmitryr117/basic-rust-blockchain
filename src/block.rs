@@ -3,7 +3,7 @@ use std::usize;
 use crate::{
 	config::{
 		GENESIS_DIFFICULTY, GENESIS_HASH, GENESIS_LAST_HASH, GENESIS_NONCE,
-		GENESIS_TS, MINE_RATE, MINE_RATE_DELTA, REWARD_INPUT_ADDRESS,
+		GENESIS_TS, MINE_RATE, MINE_RATE_DELTA,
 	},
 	traits::BinarySerializable,
 	transaction::Transaction,
@@ -155,7 +155,7 @@ mod tests {
 	use super::*;
 	use crate::{
 		blockchain::Blockchain,
-		config::{GENESIS_NONCE, MINE_RATE},
+		config::{GENESIS_NONCE, MINE_RATE, REWARD_INPUT_ADDRESS},
 	};
 	use pretty_assertions::assert_eq;
 
