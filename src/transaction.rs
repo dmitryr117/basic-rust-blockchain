@@ -57,7 +57,7 @@ impl Transaction {
 		let receiver_addr: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 		let output_map =
 			Transaction::create_reward_output_map(&receiver_addr, amount);
-		let input = TransactionInput::new_reward_input(sender_addr);
+		let input = TransactionInput::new_genesis_input(sender_addr);
 		Self { id, amount, output_map, input }
 	}
 
