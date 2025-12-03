@@ -8,6 +8,7 @@ use tokio::io::{self, AsyncBufReadExt};
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
+use uuid::Uuid;
 
 use crate::channels::AppEvent;
 use crate::traits::BinarySerializable;
@@ -89,9 +90,12 @@ pub fn start_p2p_task(
 						Some(AppEvent::BroadcastMessage(message)) => {
 							if message.action == constants::BROADCAST_TXN_POOL {
 								let txn_pool = transaction_pool.read().await;
-								if let Some(uuid) = &message.uuid {
-									if let Some(transaction) = txn_pool.transaction_map.get(&uuid) {
-										connection.broadcast(&txn_topic, transaction, "Published transaction.", "Cannot publish transaction").await;
+								if let Some(data) = &message.data {
+									if let Ok(arr) = data.as_slice().try_into() {
+										let uuid = Uuid::from_bytes_le(arr);
+										if let Some(transaction) = txn_pool.transaction_map.get(&uuid) {
+											connection.broadcast(&txn_topic, transaction, "Published transaction.", "Cannot publish transaction").await;
+										}
 									}
 								}
 							} else if message.action == constants::BROADCAST_CHAIN {

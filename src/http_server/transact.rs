@@ -28,7 +28,7 @@ async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
 			.event_tx
 			.send(AppEvent::BroadcastMessage(AppMessage::new(
 				constants::BROADCAST_TXN_POOL.to_string(),
-				Some(uuid.clone()),
+				Some(uuid.to_bytes_le().to_vec()),
 			))) {};
 }
 

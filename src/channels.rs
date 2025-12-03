@@ -1,15 +1,14 @@
 use tokio::sync::mpsc;
-use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct AppMessage {
 	pub action: String,
-	pub uuid: Option<Uuid>,
+	pub data: Option<Vec<u8>>,
 }
 
 impl AppMessage {
-	pub fn new(action: String, uuid: Option<Uuid>) -> Self {
-		Self { action, uuid }
+	pub fn new(action: String, data: Option<Vec<u8>>) -> Self {
+		Self { action, data }
 	}
 }
 
