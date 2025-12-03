@@ -1,5 +1,6 @@
 use crate::{
 	block::{Block, BlockTr},
+	traits::BinarySerializable,
 	transaction::Transaction,
 	utils::cryptohash,
 };
@@ -8,12 +9,12 @@ use crate::{
 pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<Transaction>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>);
-	fn to_bytes(
-		chain: &Vec<Block>,
-	) -> Result<Vec<u8>, bincode::error::EncodeError>;
-	fn from_bytes(
-		bytes: &[u8],
-	) -> Result<Vec<Block>, bincode::error::DecodeError>;
+	// fn to_bytes(
+	// 	chain: &Vec<Block>,
+	// ) -> Result<Vec<u8>, bincode::error::EncodeError>;
+	// fn from_bytes(
+	// 	bytes: &[u8],
+	// ) -> Result<Vec<Block>, bincode::error::DecodeError>;
 }
 
 #[derive(Debug, Clone)]
@@ -98,21 +99,30 @@ impl BlockchainTr for Blockchain {
 		}
 		self.chain = new_chain;
 	}
+}
 
+impl BinarySerializable for Blockchain {
 	fn to_bytes(
-		chain: &Vec<Block>,
-	) -> Result<Vec<u8>, bincode::error::EncodeError> {
+		&self,
+	) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
 		let config = bincode::config::standard();
-		bincode::serde::encode_to_vec(chain, config)
+		match bincode::serde::encode_to_vec(&self.chain, config) {
+			Ok(bytes) => Ok(bytes),
+			Err(err) => Err(Box::new(err)),
+		}
 	}
 
 	fn from_bytes(
 		bytes: &[u8],
-	) -> Result<Vec<Block>, bincode::error::DecodeError> {
+	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
 		let config = bincode::config::standard();
-		let (chain, _bytes_read) =
-			bincode::serde::decode_from_slice(bytes, config)?;
-		Ok(chain)
+		match bincode::serde::decode_from_slice(bytes, config) {
+			Ok(data) => {
+				let chain: Vec<Block> = data.0;
+				return Ok(Self { chain });
+			}
+			Err(err) => Err(Box::new(err)),
+		}
 	}
 }
 

@@ -4,11 +4,11 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub struct AppMessage {
 	pub action: String,
-	pub uuid: Uuid,
+	pub uuid: Option<Uuid>,
 }
 
 impl AppMessage {
-	pub fn new(action: String, uuid: Uuid) -> Self {
+	pub fn new(action: String, uuid: Option<Uuid>) -> Self {
 		Self { action, uuid }
 	}
 }

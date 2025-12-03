@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use axum::{Router, routing::get};
 use tokio::{
-	sync::{RwLock, mpsc},
+	sync::{Mutex, RwLock, mpsc},
 	task::JoinHandle,
 };
 
@@ -17,14 +17,14 @@ use crate::{
 pub struct AppState {
 	pub wallet: Arc<RwLock<Wallet>>,
 	pub transaction_pool: Arc<RwLock<TransactionPool>>,
-	pub event_tx: mpsc::UnboundedSender<AppEvent>,
+	pub event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>,
 }
 
 pub fn start_http_server_task(
 	port: u32,
 	wallet: Arc<RwLock<Wallet>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
-	event_tx: mpsc::UnboundedSender<AppEvent>,
+	event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {
 		let state = AppState { wallet, transaction_pool, event_tx };

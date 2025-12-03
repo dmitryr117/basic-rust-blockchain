@@ -5,7 +5,7 @@ use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::io::{self, AsyncBufReadExt};
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
@@ -24,6 +24,7 @@ use crate::{
 pub fn start_p2p_task(
 	blockchain: Arc<RwLock<Blockchain>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
+	event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>,
 	mut event_rx: mpsc::UnboundedReceiver<AppEvent>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {
@@ -88,14 +89,21 @@ pub fn start_p2p_task(
 						Some(AppEvent::BroadcastMessage(message)) => {
 							if message.action == constants::BROADCAST_TXN_POOL {
 								let txn_pool = transaction_pool.read().await;
-								if let Some(transaction) = txn_pool.transaction_map.get(&message.uuid) {
-									if let Ok(encoded_txn) = transaction.to_bytes() {
-										match connection.publish(&txn_topic, &encoded_txn).await {
-											Ok(_) => println!("Transaction published!"),
-											Err(e) => println!("Failed to send: {}", e),
-										}
+								if let Some(uuid) = &message.uuid {
+									if let Some(transaction) = txn_pool.transaction_map.get(&uuid) {
+										connection.broadcast(&txn_topic, transaction, "Published transaction.", "Cannot publish transaction").await;
 									}
 								}
+							} else if message.action == constants::BROADCAST_CHAIN {
+								let blockchain_read = blockchain.read().await;
+								connection
+									.broadcast(
+										&chain_topic,
+										&*blockchain_read,
+										"Blockchain sent.",
+										"Blockchain send failed",
+									)
+									.await;
 							}
 							println!("Message {message:?}")
 						}
@@ -121,7 +129,7 @@ pub fn start_p2p_task(
 									TopicEnum::Blockchain => {
 										// chain replacement.
 										if let Ok(new_chain) = Blockchain::from_bytes(&message.data) {
-											blockchain.write().await.replace_chain(new_chain);
+											blockchain.write().await.replace_chain(new_chain.chain);
 										}
 									},
 									TopicEnum::Transaction => {
@@ -168,32 +176,26 @@ pub fn start_p2p_task(
 				_ = heartbeat.tick() => {} // unblock timed tasks by heartbeat. other continuous option: tokio::task::yield_now().await;
 			}
 			if debouncer_brodcast_chain.check() {
-				let blockchain_quard = blockchain.read().await;
-				if let Ok(bytes_chain) =
-					Blockchain::to_bytes(&blockchain_quard.chain)
-				{
-					match connection
-						.publish(&chain_topic, &bytes_chain)
-						.await
-					{
-						Ok(_) => println!("Debounced blockchain published!"),
-						Err(e) => println!("Failed to send: {}", e),
-					}
-				}
-				let txn_pool = transaction_pool.read().await;
-				if let Ok(bytes_txn_pool) = txn_pool.to_bytes() {
-					match connection
-						.publish(&txn_pool_topic, &bytes_txn_pool)
-						.await
-					{
-						Ok(_) => {
-							println!("Debounced transaction pool published!")
-						}
-						Err(e) => {
-							println!("Failed to send transaction pool: {}", e)
-						}
-					}
-				}
+				let blockchain_read = blockchain.read().await;
+				let transaction_pool_read = transaction_pool.read().await;
+
+				connection
+					.broadcast(
+						&chain_topic,
+						&*blockchain_read,
+						"Blockchain sent.",
+						"Blockchain send failed",
+					)
+					.await;
+
+				connection
+					.broadcast(
+						&txn_pool_topic,
+						&*transaction_pool_read,
+						"Blockchain sent.",
+						"Blockchain send failed",
+					)
+					.await;
 			}
 		}
 	})

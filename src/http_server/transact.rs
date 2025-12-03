@@ -22,14 +22,12 @@ pub fn routes() -> Router<AppState> {
 	Router::new().route("/transact", post(transact))
 }
 
-fn broadcast_txn(state: &AppState, uuid: &Uuid) {
-	if let Ok(_) =
-		state
-			.event_tx
-			.send(AppEvent::BroadcastMessage(AppMessage::new(
-				constants::BROADCAST_TXN_POOL.to_string(),
-				uuid.clone(),
-			))) {};
+async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
+	let tx = state.event_tx.lock().await;
+	if let Ok(_) = tx.send(AppEvent::BroadcastMessage(AppMessage::new(
+		constants::BROADCAST_TXN_POOL.to_string(),
+		Some(uuid.clone()),
+	))) {};
 }
 
 async fn transact(
@@ -57,7 +55,7 @@ async fn transact(
 				transaction.update(&wallet, &recipient_vec_address, amount);
 			match update_result {
 				Ok(()) => {
-					broadcast_txn(&state, &transaction.id);
+					broadcast_txn(&state, &transaction.id).await;
 					Ok(Json(transaction.clone()))
 				}
 				Err(err) => Err((
@@ -72,7 +70,7 @@ async fn transact(
 			match txn_result {
 				Ok(transaction) => {
 					transaction_pool.set_transaction(transaction.clone());
-					broadcast_txn(&state, &transaction.id);
+					broadcast_txn(&state, &transaction.id).await;
 					Ok(Json(transaction))
 				}
 				Err(err) => Err((

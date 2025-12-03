@@ -13,7 +13,7 @@ use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
 
-use crate::blockchain::{Blockchain, BlockchainTr};
+use crate::traits::BinarySerializable;
 
 #[derive(libp2p::swarm::NetworkBehaviour)]
 pub struct P2PBehaviour {
@@ -196,16 +196,21 @@ impl P2PConnection {
 		self.connected_peers.read().await.len()
 	}
 
-	pub async fn broadcast_chain(
+	pub async fn broadcast<T>(
 		&self,
 		topic: &IdentTopic,
-		blockchain: &Blockchain,
-	) {
-		let blockchain_guard = blockchain;
-		if let Ok(bytes_chain) = Blockchain::to_bytes(&blockchain_guard.chain) {
+		data: &T,
+		success_message: &str,
+		failure_message: &str,
+	) where
+		T: BinarySerializable,
+	{
+		if let Ok(bytes_chain) = data.to_bytes() {
 			match self.publish(topic, &bytes_chain).await {
-				Ok(_) => println!("Debounced blockchain published!"),
-				Err(e) => println!("Failed to send: {}", e),
+				Ok(_) => println!("Success! {}", success_message),
+				Err(e) => {
+					println!("Failed! {}, {}", e, failure_message)
+				}
 			}
 		}
 	}

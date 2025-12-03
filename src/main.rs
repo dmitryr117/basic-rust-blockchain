@@ -7,7 +7,7 @@ use std::env;
  * Testing libp2p communicator singleton class with terminal chat.
  */
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use cryptochain::blockchain::Blockchain;
 use cryptochain::http_server::start_http_server_task;
@@ -26,18 +26,23 @@ async fn main() {
 	}
 
 	let (event_tx, event_rx) = create_unbounded_channel();
+	let event_tx = Arc::new(Mutex::new(event_tx));
 	let blockchain = Arc::new(RwLock::new(Blockchain::new()));
 	let wallet =
 		Arc::new(RwLock::new(Wallet::new(&Keypair::generate_ed25519())));
 	let transaction_pool = Arc::new(RwLock::new(TransactionPool::new()));
 
-	let p2p_handle =
-		start_p2p_task(blockchain.clone(), transaction_pool.clone(), event_rx);
+	let p2p_handle = start_p2p_task(
+		blockchain.clone(),
+		transaction_pool.clone(),
+		event_tx.clone(),
+		event_rx,
+	);
 	let http_server_handle = start_http_server_task(
 		port,
 		wallet.clone(),
 		transaction_pool.clone(),
-		event_tx,
+		event_tx.clone(),
 	);
 
 	tokio::select! {
