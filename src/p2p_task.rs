@@ -5,7 +5,7 @@ use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::io::{self, AsyncBufReadExt};
-use tokio::sync::{Mutex, RwLock, mpsc};
+use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
@@ -24,7 +24,7 @@ use crate::{
 pub fn start_p2p_task(
 	blockchain: Arc<RwLock<Blockchain>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
-	event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>,
+	event_tx: Arc<mpsc::UnboundedSender<AppEvent>>,
 	mut event_rx: mpsc::UnboundedReceiver<AppEvent>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {

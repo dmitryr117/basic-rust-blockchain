@@ -23,11 +23,13 @@ pub fn routes() -> Router<AppState> {
 }
 
 async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
-	let tx = state.event_tx.lock().await;
-	if let Ok(_) = tx.send(AppEvent::BroadcastMessage(AppMessage::new(
-		constants::BROADCAST_TXN_POOL.to_string(),
-		Some(uuid.clone()),
-	))) {};
+	if let Ok(_) =
+		state
+			.event_tx
+			.send(AppEvent::BroadcastMessage(AppMessage::new(
+				constants::BROADCAST_TXN_POOL.to_string(),
+				Some(uuid.clone()),
+			))) {};
 }
 
 async fn transact(
