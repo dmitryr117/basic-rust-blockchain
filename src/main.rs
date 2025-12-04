@@ -1,4 +1,5 @@
 use cryptochain::channels::create_unbounded_channel;
+use cryptochain::transaction_miner::TransactionMiner;
 use cryptochain::transaction_pool::TransactionPool;
 use cryptochain::wallet::Wallet;
 use libp2p::identity::Keypair;
@@ -7,7 +8,7 @@ use std::env;
  * Testing libp2p communicator singleton class with terminal chat.
  */
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use cryptochain::blockchain::Blockchain;
 use cryptochain::http_server::start_http_server_task;
@@ -31,10 +32,17 @@ async fn main() {
 	let wallet =
 		Arc::new(RwLock::new(Wallet::new(&Keypair::generate_ed25519())));
 	let transaction_pool = Arc::new(RwLock::new(TransactionPool::new()));
+	let transaction_miner = Arc::new(Mutex::new(TransactionMiner::new(
+		blockchain.clone(),
+		transaction_pool.clone(),
+		wallet.clone(),
+		event_tx.clone(),
+	)));
 
 	let p2p_handle = start_p2p_task(
 		blockchain.clone(),
 		transaction_pool.clone(),
+		transaction_miner.clone(),
 		event_tx.clone(),
 		event_rx,
 	);

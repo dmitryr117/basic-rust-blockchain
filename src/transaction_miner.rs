@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock, mpsc};
+use tokio::sync::{RwLock, mpsc};
 
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
@@ -15,7 +15,7 @@ pub struct TransactionMiner {
 	pub blockchain: Arc<RwLock<Blockchain>>,
 	pub transaction_pool: Arc<RwLock<TransactionPool>>,
 	pub wallet: Arc<RwLock<Wallet>>,
-	pub event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>, // will be called dirrerent.
+	pub event_tx: Arc<mpsc::UnboundedSender<AppEvent>>, // will be called dirrerent.
 }
 
 impl TransactionMiner {
@@ -23,7 +23,7 @@ impl TransactionMiner {
 		blockchain: Arc<RwLock<Blockchain>>,
 		transaction_pool: Arc<RwLock<TransactionPool>>,
 		wallet: Arc<RwLock<Wallet>>,
-		event_tx: Arc<Mutex<mpsc::UnboundedSender<AppEvent>>>,
+		event_tx: Arc<mpsc::UnboundedSender<AppEvent>>,
 	) -> Self {
 		Self { blockchain, transaction_pool, wallet, event_tx }
 	}
@@ -51,11 +51,13 @@ impl TransactionMiner {
 		blockchain.add_block(valid_transactions);
 
 		// broadcast updated blockchain
-		let tx = &self.event_tx.lock().await;
-		if let Ok(_) = tx.send(AppEvent::BroadcastMessage(AppMessage::new(
-			constants::BROADCAST_TXN_POOL.to_string(),
-			None,
-		))) {};
+		if let Ok(_) =
+			&self
+				.event_tx
+				.send(AppEvent::BroadcastMessage(AppMessage::new(
+					constants::BROADCAST_TXN_POOL.to_string(),
+					None,
+				))) {};
 
 		// clear the pool
 		self.transaction_pool.write().await.clear();

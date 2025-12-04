@@ -16,6 +16,7 @@ impl AppMessage {
 pub enum AppEvent {
 	BroadcastMessage(AppMessage),
 	SyncBlockchain,
+	MineTransactions,
 }
 
 pub fn create_unbounded_channel()

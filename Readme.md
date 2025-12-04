@@ -5,7 +5,7 @@
 
 ## Connecting localhost chat swarm
 
-In 1st terminal run: `cargo run --bin localp2p`
+In 1st terminal run: `cargo run --bin cryptochain -- <port#>
 Note the following:
 
 ```

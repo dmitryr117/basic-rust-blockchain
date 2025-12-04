@@ -1,4 +1,10 @@
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use axum::{
+	Json, Router,
+	extract::State,
+	http::StatusCode,
+	response::Redirect,
+	routing::{get, post},
+};
 use serde::Deserialize;
 use uuid::Uuid;
 use validator::Validate;
@@ -19,7 +25,9 @@ struct TransactionDto {
 }
 
 pub fn routes() -> Router<AppState> {
-	Router::new().route("/transact", post(transact))
+	Router::new()
+		.route("/transact", post(transact))
+		.route("/mine-transactions", get(mine_txn))
 }
 
 async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
@@ -81,5 +89,17 @@ async fn transact(
 				)),
 			}
 		}
+	}
+}
+
+async fn mine_txn(
+	State(state): State<AppState>,
+) -> Result<Redirect, (StatusCode, String)> {
+	match state.event_tx.send(AppEvent::MineTransactions) {
+		Ok(_) => Ok(Redirect::to("/api/blocks")),
+		Err(err) => Err((
+			StatusCode::BAD_REQUEST,
+			format!("Invalid transaction: {}", err),
+		)),
 	}
 }

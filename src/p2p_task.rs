@@ -5,7 +5,7 @@ use futures::StreamExt;
 use libp2p::{gossipsub, mdns, swarm::SwarmEvent};
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::io::{self, AsyncBufReadExt};
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 use uuid::Uuid;
@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::channels::AppEvent;
 use crate::traits::BinarySerializable;
 use crate::transaction::Transaction;
+use crate::transaction_miner::TransactionMiner;
 use crate::transaction_pool::TransactionPool;
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
@@ -25,7 +26,8 @@ use crate::{
 pub fn start_p2p_task(
 	blockchain: Arc<RwLock<Blockchain>>,
 	transaction_pool: Arc<RwLock<TransactionPool>>,
-	event_tx: Arc<mpsc::UnboundedSender<AppEvent>>,
+	transaction_miner: Arc<Mutex<TransactionMiner>>,
+	_event_tx: Arc<mpsc::UnboundedSender<AppEvent>>,
 	mut event_rx: mpsc::UnboundedReceiver<AppEvent>,
 ) -> JoinHandle<()> {
 	tokio::spawn(async move {
@@ -110,6 +112,10 @@ pub fn start_p2p_task(
 									.await;
 							}
 							println!("Message {message:?}")
+						}
+						Some(AppEvent::MineTransactions) => {
+							let miner = transaction_miner.lock().await;
+							miner.mine_transactions().await;
 						}
 						_ => {
 							continue;
