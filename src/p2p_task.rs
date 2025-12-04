@@ -48,6 +48,9 @@ pub fn start_p2p_task(
 		let txn_pool_topic = Arc::new(gossipsub::IdentTopic::new(
 			TopicEnum::TransactionPool.to_string(),
 		));
+		let clear_txn_pool_topic = Arc::new(gossipsub::IdentTopic::new(
+			TopicEnum::ClearTransactionPool.to_string(),
+		));
 
 		let mut heartbeat = interval(Duration::from_millis(100));
 		let mut debouncer_brodcast_chain =
@@ -90,32 +93,41 @@ pub fn start_p2p_task(
 				event_channel = event_rx.recv() => {
 					match event_channel {
 						Some(AppEvent::BroadcastMessage(message)) => {
-							if message.action == constants::BROADCAST_TXN_POOL {
+							if message.action == constants::BROADCAST_TXN {
 								let txn_pool = transaction_pool.read().await;
 								if let Some(data) = &message.data {
 									if let Ok(arr) = data.as_slice().try_into() {
 										let uuid = Uuid::from_bytes_le(arr);
 										if let Some(transaction) = txn_pool.transaction_map.get(&uuid) {
-											connection.broadcast(&txn_topic, transaction, "Published transaction.", "Cannot publish transaction").await;
+											if let Ok(txn_bytes) = transaction.to_bytes() {
+												connection.broadcast(&txn_topic, Some(txn_bytes), "Published transaction.", "Cannot publish transaction").await;
+											}
 										}
 									}
 								}
 							} else if message.action == constants::BROADCAST_CHAIN {
 								let blockchain_read = blockchain.read().await;
-								connection
-									.broadcast(
-										&chain_topic,
-										&*blockchain_read,
-										"Blockchain sent.",
-										"Blockchain send failed",
-									)
-									.await;
+								if let Ok(chain_bytes) = blockchain_read.to_bytes() {
+									connection
+										.broadcast(
+											&chain_topic,
+											Some(chain_bytes),
+											"Blockchain sent.",
+											"Blockchain send failed",
+										)
+										.await;
+								}
 							}
 							println!("Message {message:?}")
 						}
 						Some(AppEvent::MineTransactions) => {
 							let miner = transaction_miner.lock().await;
 							miner.mine_transactions().await;
+						}
+						Some(AppEvent::ClearTransactionPool) => {
+							println!("Send clear transactions.");
+							// might still have to add which transactions to remove to content instead of None.
+							connection.broadcast(&clear_txn_pool_topic, None, "Success", "Failure").await;
 						}
 						_ => {
 							continue;
@@ -154,6 +166,13 @@ pub fn start_p2p_task(
 											txn_pool.update_transaction_pool(incoming_txn_pool);
 										}
 									}
+									TopicEnum::ClearTransactionPool => {
+										// if let Ok(incoming_txn_pool) = TransactionPool::from_bytes(&message.data) {
+										// 	let mut txn_pool = transaction_pool.write().await;
+										// 	txn_pool.update_transaction_pool(incoming_txn_pool);
+										// }
+										println!("Clear transaction pool.")
+									}
 								}
 							}
 						}
@@ -189,23 +208,29 @@ pub fn start_p2p_task(
 				let blockchain_read = blockchain.read().await;
 				let transaction_pool_read = transaction_pool.read().await;
 
-				connection
-					.broadcast(
-						&chain_topic,
-						&*blockchain_read,
-						"Blockchain sent.",
-						"Blockchain send failed",
-					)
-					.await;
+				if let Ok(blockchain_bytes) = blockchain_read.to_bytes() {
+					connection
+						.broadcast(
+							&chain_topic,
+							Some(blockchain_bytes),
+							"Blockchain sent.",
+							"Blockchain send failed",
+						)
+						.await;
+				}
 
-				connection
-					.broadcast(
-						&txn_pool_topic,
-						&*transaction_pool_read,
-						"Blockchain sent.",
-						"Blockchain send failed",
-					)
-					.await;
+				if let Ok(transaction_pool_bytes) =
+					transaction_pool_read.to_bytes()
+				{
+					connection
+						.broadcast(
+							&txn_pool_topic,
+							Some(transaction_pool_bytes),
+							"Blockchain sent.",
+							"Blockchain send failed",
+						)
+						.await;
+				}
 			}
 		}
 	})

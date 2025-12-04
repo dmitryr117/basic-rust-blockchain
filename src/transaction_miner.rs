@@ -3,9 +3,8 @@ use tokio::sync::{RwLock, mpsc};
 
 use crate::{
 	blockchain::{Blockchain, BlockchainTr},
-	channels::{AppEvent, AppMessage},
+	channels::AppEvent,
 	config::{MINING_REWARD, REWARD_INPUT_ADDRESS},
-	constants,
 	transaction::Transaction,
 	transaction_pool::TransactionPool,
 	wallet::Wallet,
@@ -29,6 +28,7 @@ impl TransactionMiner {
 	}
 
 	pub async fn mine_transactions(&self) {
+		println!("Mine transaction. 01");
 		// get valid transactions from txn pool
 		let mut valid_transactions = self
 			.transaction_pool
@@ -43,7 +43,7 @@ impl TransactionMiner {
 			&REWARD_INPUT_ADDRESS,
 			MINING_REWARD,
 		);
-
+		println!("Mine transaction. 02");
 		valid_transactions.push(reward_txn);
 
 		// add a block to blockchain
@@ -51,14 +51,8 @@ impl TransactionMiner {
 		blockchain.add_block(valid_transactions);
 
 		// broadcast updated blockchain
-		if let Ok(_) =
-			&self
-				.event_tx
-				.send(AppEvent::BroadcastMessage(AppMessage::new(
-					constants::BROADCAST_TXN_POOL.to_string(),
-					None,
-				))) {};
-
+		if let Ok(_) = &self.event_tx.send(AppEvent::ClearTransactionPool) {};
+		println!("Mine transaction. 03");
 		// clear the pool
 		self.transaction_pool.write().await.clear();
 	}

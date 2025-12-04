@@ -1,5 +1,3 @@
-use uuid::Uuid;
-
 pub const MINE_RATE: u32 = 1000; // milliseconds
 pub const MINE_RATE_DELTA: u32 = 50;
 
@@ -9,8 +7,6 @@ pub const GENESIS_LAST_HASH: [u8; 4] = [1, 2, 3, 4];
 pub const GENESIS_DATA: [&str; 1] = ["genesis_data"];
 pub const GENESIS_DIFFICULTY: u32 = 5;
 pub const GENESIS_NONCE: u32 = 0;
-pub const GENESIS_UUID: Uuid =
-	Uuid::from_u128(0x12345678123456781234567812345678);
 pub const STARTING_BALANCE: u32 = 1000;
 
 pub const REWARD_INPUT_ADDRESS: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];

@@ -35,7 +35,7 @@ async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
 		state
 			.event_tx
 			.send(AppEvent::BroadcastMessage(AppMessage::new(
-				constants::BROADCAST_TXN_POOL.to_string(),
+				constants::BROADCAST_TXN.to_string(),
 				Some(uuid.to_bytes_le().to_vec()),
 			))) {};
 }
@@ -94,9 +94,10 @@ async fn transact(
 
 async fn mine_txn(
 	State(state): State<AppState>,
-) -> Result<Redirect, (StatusCode, String)> {
+) -> Result<(), (StatusCode, String)> {
 	match state.event_tx.send(AppEvent::MineTransactions) {
-		Ok(_) => Ok(Redirect::to("/api/blocks")),
+		// Ok(_) => Ok(Redirect::to("/api/blocks")),
+		Ok(_) => Ok(()),
 		Err(err) => Err((
 			StatusCode::BAD_REQUEST,
 			format!("Invalid transaction: {}", err),

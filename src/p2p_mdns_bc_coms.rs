@@ -13,8 +13,6 @@ use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
 
-use crate::traits::BinarySerializable;
-
 #[derive(libp2p::swarm::NetworkBehaviour)]
 pub struct P2PBehaviour {
 	pub gossipsub: Behaviour,
@@ -31,6 +29,8 @@ pub enum TopicEnum {
 	Transaction,
 	#[strum(serialize = "transaction_pool")]
 	TransactionPool,
+	#[strum(serialize = "clear_transaction_pool")]
+	ClearTransactionPool,
 }
 
 pub struct P2PConnection {
@@ -196,22 +196,26 @@ impl P2PConnection {
 		self.connected_peers.read().await.len()
 	}
 
-	pub async fn broadcast<T>(
+	pub async fn broadcast(
 		&self,
 		topic: &IdentTopic,
-		data: &T,
+		data: Option<Vec<u8>>,
 		success_message: &str,
 		failure_message: &str,
-	) where
-		T: BinarySerializable,
-	{
-		if let Ok(bytes_chain) = data.to_bytes() {
-			match self.publish(topic, &bytes_chain).await {
+	) {
+		match data {
+			Some(data) => match self.publish(topic, &data).await {
 				Ok(_) => println!("Success! {}", success_message),
 				Err(e) => {
 					println!("Failed! {}, {}", e, failure_message)
 				}
-			}
+			},
+			None => match self.publish(topic, &[]).await {
+				Ok(_) => println!("Success! {}", success_message),
+				Err(e) => {
+					println!("Failed! {}, {}", e, failure_message)
+				}
+			},
 		}
 	}
 }
