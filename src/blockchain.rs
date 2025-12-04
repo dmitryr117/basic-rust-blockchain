@@ -8,7 +8,7 @@ use crate::{
 // Also nbeed to load chain from file system if it exists.
 pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<Transaction>);
-	fn replace_chain(&mut self, new_chain: Vec<Block>);
+	fn replace_chain(&mut self, new_chain: Vec<Block>) -> Result<(), String>;
 	// fn to_bytes(
 	// 	chain: &Vec<Block>,
 	// ) -> Result<Vec<u8>, bincode::error::EncodeError>;
@@ -83,21 +83,20 @@ impl BlockchainTr for Blockchain {
 		self.chain.push(new_block);
 	}
 
-	fn replace_chain(&mut self, new_chain: Vec<Block>) {
+	fn replace_chain(&mut self, new_chain: Vec<Block>) -> Result<(), String> {
 		if new_chain.len() <= self.chain.len() {
-			eprintln!(
+			return Err(format!(
 				"New chain too short. Old len: {}, new len: {}",
 				self.chain.len(),
 				new_chain.len()
-			);
-			return;
+			));
 		}
 
 		if !Blockchain::is_valid_chain(&new_chain) {
-			eprintln!("New chain is Invalid!");
-			return;
+			return Err(format!("New chain is Invalid!"));
 		}
 		self.chain = new_chain;
+		Ok(())
 	}
 }
 

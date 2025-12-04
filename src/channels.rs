@@ -1,24 +1,23 @@
 use tokio::sync::mpsc;
 
-#[derive(Debug)]
-pub struct AppMessage {
-	pub action: String,
-	pub data: Option<Vec<u8>>,
-}
+// #[derive(Debug)]
+// pub struct AppMessage {
+// 	pub action: String,
+// 	pub data: Option<Vec<u8>>,
+// }
 
-impl AppMessage {
-	pub fn new(action: String, data: Option<Vec<u8>>) -> Self {
-		Self { action, data }
-	}
-}
+// impl AppMessage {
+// 	pub fn new(action: String, data: Option<Vec<u8>>) -> Self {
+// 		Self { action, data }
+// 	}
+// }
 
 #[derive(Debug)]
 pub enum AppEvent {
-	BroadcastMessage(AppMessage),
-	SyncBlockchain,
+	BroadcastTransaction(Vec<u8>),
+	BroadcastChain,
 	MineTransactions,
 	TransactionPool,
-	ClearTransactionPool,
 }
 
 pub fn create_unbounded_channel()

@@ -29,8 +29,6 @@ pub enum TopicEnum {
 	Transaction,
 	#[strum(serialize = "transaction_pool")]
 	TransactionPool,
-	#[strum(serialize = "clear_transaction_pool")]
-	ClearTransactionPool,
 }
 
 pub struct P2PConnection {

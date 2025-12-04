@@ -10,10 +10,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-	channels::{AppEvent, AppMessage},
-	constants,
-	http_server::AppState,
-	transaction::Transaction,
+	channels::AppEvent, http_server::AppState, transaction::Transaction,
 };
 
 #[derive(Debug, Deserialize, Validate)]
@@ -31,13 +28,10 @@ pub fn routes() -> Router<AppState> {
 }
 
 async fn broadcast_txn(state: &AppState, uuid: &Uuid) {
-	if let Ok(_) =
-		state
-			.event_tx
-			.send(AppEvent::BroadcastMessage(AppMessage::new(
-				constants::BROADCAST_TXN.to_string(),
-				Some(uuid.to_bytes_le().to_vec()),
-			))) {};
+	if let Ok(_) = state
+		.event_tx
+		.send(AppEvent::BroadcastTransaction(uuid.to_bytes_le().to_vec()))
+	{};
 }
 
 async fn transact(

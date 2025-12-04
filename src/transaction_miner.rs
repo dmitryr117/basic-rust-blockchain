@@ -51,8 +51,8 @@ impl TransactionMiner {
 		blockchain.add_block(valid_transactions);
 
 		// broadcast updated blockchain
-		if let Ok(_) = &self.event_tx.send(AppEvent::ClearTransactionPool) {};
-		println!("Mine transaction. 03");
+		if let Ok(_) = &self.event_tx.send(AppEvent::BroadcastChain) {};
+
 		// clear the pool
 		self.transaction_pool.write().await.clear();
 	}
