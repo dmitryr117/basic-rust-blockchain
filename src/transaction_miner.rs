@@ -28,7 +28,6 @@ impl TransactionMiner {
 	}
 
 	pub async fn mine_transactions(&self) {
-		println!("Mine transaction. 01");
 		// get valid transactions from txn pool
 		let mut valid_transactions = self
 			.transaction_pool
@@ -43,7 +42,6 @@ impl TransactionMiner {
 			&REWARD_INPUT_ADDRESS,
 			MINING_REWARD,
 		);
-		println!("Mine transaction. 02");
 		valid_transactions.push(reward_txn);
 
 		// add a block to blockchain

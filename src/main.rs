@@ -49,6 +49,7 @@ async fn main() {
 	let http_server_handle = start_http_server_task(
 		port,
 		wallet.clone(),
+		blockchain.clone(),
 		transaction_pool.clone(),
 		event_tx.clone(),
 	);

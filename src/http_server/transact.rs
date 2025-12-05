@@ -88,10 +88,9 @@ async fn transact(
 
 async fn mine_txn(
 	State(state): State<AppState>,
-) -> Result<(), (StatusCode, String)> {
+) -> Result<Redirect, (StatusCode, String)> {
 	match state.event_tx.send(AppEvent::MineTransactions) {
-		// Ok(_) => Ok(Redirect::to("/api/blocks")),
-		Ok(_) => Ok(()),
+		Ok(_) => Ok(Redirect::to("/api/blocks")),
 		Err(err) => Err((
 			StatusCode::BAD_REQUEST,
 			format!("Invalid transaction: {}", err),

@@ -33,9 +33,6 @@ pub fn start_p2p_task(
 		let connection = p2p_mdns_bc_coms::P2PConnection::global().await;
 		tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-		println!("\nType messages to send. 'exit' to quit.");
-		println!("=================\n");
-
 		let mut stdin = io::BufReader::new(io::stdin()).lines();
 
 		let chain_topic = Arc::new(gossipsub::IdentTopic::new(
@@ -101,7 +98,6 @@ pub fn start_p2p_task(
 						}
 						Some(AppEvent::BroadcastChain) => {
 							let blockchain_read = blockchain.read().await;
-							println!("New chain: {:#?}", blockchain_read);
 							if let Ok(chain_bytes) = blockchain_read.to_bytes() {
 								connection
 									.broadcast(
@@ -139,9 +135,6 @@ pub fn start_p2p_task(
 									TopicEnum::Blockchain => {
 										// chain replacement.
 										if let Ok(new_chain) = Blockchain::from_bytes(&message.data) {
-
-											println!("New chain: {:#?}", new_chain);
-
 											let mut blockchain_write = blockchain.write().await;
 											match blockchain_write.replace_chain(new_chain.chain) {
 												Ok(()) => {

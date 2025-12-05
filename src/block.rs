@@ -11,6 +11,7 @@ use crate::{
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 pub trait BlockTr<T> {
 	fn adjust_difficulty(last_block: &T, ms_time: i64) -> u32;
@@ -20,10 +21,13 @@ pub trait BlockTr<T> {
 	fn is_valid_bit_hash(hash: &[u8], difficulty: u32) -> bool;
 }
 
+#[serde_as]
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Block {
 	pub timestamp: i64,
+	#[serde_as(as = "serde_with::hex::Hex")]
 	pub last_hash: Vec<u8>,
+	#[serde_as(as = "serde_with::hex::Hex")]
 	pub hash: Vec<u8>,
 	pub data: Vec<Transaction>,
 	pub nonce: u32,
