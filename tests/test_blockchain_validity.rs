@@ -110,8 +110,10 @@ mod chain_replacement {
 				101,
 			)];
 		}
-		blockchain.replace_chain(new_chain.chain);
-		assert_eq!(blockchain.chain, original_chain);
+		match blockchain.replace_chain(new_chain.chain) {
+			Ok(_) => panic!("Blockchain was replaced"),
+			Err(_) => assert_eq!(blockchain.chain, original_chain),
+		}
 	}
 
 	#[test]
@@ -141,8 +143,10 @@ mod chain_replacement {
 			block.last_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 		}
 
-		blockchain.replace_chain(new_chain.chain);
-		assert_eq!(blockchain.chain, original_chain);
+		match blockchain.replace_chain(new_chain.chain) {
+			Ok(_) => panic!("Blockchain was replaced"),
+			Err(_) => assert_eq!(blockchain.chain, original_chain),
+		}
 	}
 
 	#[test]
@@ -165,7 +169,9 @@ mod chain_replacement {
 			30,
 		)]);
 
-		blockchain.replace_chain(new_chain.chain.clone());
+		blockchain
+			.replace_chain(new_chain.chain.clone())
+			.expect("Unable to replace chain");
 		assert_eq!(blockchain.chain, new_chain.chain);
 	}
 }
