@@ -13,3 +13,7 @@ match topic_enum {
 ```
 
 Because from_bytes is impossible to deal with because hash_map can be inconsistent.
+
+
+- Need to encode - decode - hash - unhash. for any data that has to be hashed to avoid issues such as
+HashMap out of order problems.
