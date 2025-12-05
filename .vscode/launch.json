@@ -22,7 +22,9 @@
       "cargo": {
         "args": [
           "run",
-          "--bin=cryptochain"
+          "--bin=cryptochain",
+          "--",
+          "3006"
         ]
       },
       "args": []

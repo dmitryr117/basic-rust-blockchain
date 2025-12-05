@@ -64,12 +64,13 @@ impl BlockTr<Block> for Block {
 		let mut new_hash: Vec<u8>;
 
 		// transaction vector to bytes
-		let mut txn_bytes: Vec<u8> = Vec::new();
-		data.iter().for_each(|item| {
-			if let Ok(data_bytes) = item.to_bytes() {
-				txn_bytes.extend(data_bytes);
-			}
-		});
+		// let mut txn_bytes: Vec<u8> = Vec::new();
+		// data.iter().for_each(|item| {
+		// 	if let Ok(data_bytes) = item.to_bytes() {
+		// 		txn_bytes.extend(data_bytes);
+		// 	}
+		// });
+		let txn_bytes = Self::data_to_bytes(&data);
 
 		loop {
 			nonce += 1;

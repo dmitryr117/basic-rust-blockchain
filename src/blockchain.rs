@@ -69,6 +69,9 @@ impl Blockchain {
 			);
 
 			if *hash != validated_hash {
+				println!("Hash: {:#?}", hash);
+				println!("VHash: {:#?}", validated_hash);
+				// issue is here
 				return false;
 			}
 		}
