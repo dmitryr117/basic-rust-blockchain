@@ -5,17 +5,17 @@ use crate::{
 	transaction::Transaction,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionPool {
-	pub transaction_map: BTreeMap<Uuid, Transaction>,
+	pub transaction_map: HashMap<Uuid, Transaction>,
 }
 
 impl TransactionPool {
 	pub fn new() -> Self {
-		Self { transaction_map: BTreeMap::new() }
+		Self { transaction_map: HashMap::new() }
 	}
 
 	pub fn set_transaction(&mut self, transaction: Transaction) {
@@ -96,7 +96,7 @@ impl BinarySerializable for TransactionPool {
 	fn from_bytes(
 		bytes: &[u8],
 	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-		let mut transaction_map: BTreeMap<Uuid, Transaction> = BTreeMap::new();
+		let mut transaction_map: HashMap<Uuid, Transaction> = HashMap::new();
 		let mut cursor: usize = 0;
 
 		loop {
@@ -265,7 +265,7 @@ mod test_transaction_pool {
 	}
 
 	mod test_clear_transactions {
-		use std::collections::BTreeMap;
+		use std::collections::HashMap;
 
 		use crate::{
 			blockchain::{Blockchain, BlockchainTr},
@@ -288,8 +288,8 @@ mod test_transaction_pool {
 		fn test_clear_blockchain_transactions() {
 			let (mut transaction_pool, _, _) = super::before_each();
 			let mut blockchain = Blockchain::new();
-			let mut expected_txn_map: BTreeMap<Uuid, Transaction> =
-				BTreeMap::new();
+			let mut expected_txn_map: HashMap<Uuid, Transaction> =
+				HashMap::new();
 
 			for i in 0..6 {
 				let sender_wallet = Wallet::new(&Keypair::generate_ed25519());

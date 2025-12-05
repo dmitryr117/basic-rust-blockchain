@@ -6,7 +6,7 @@ use libp2p::{
 	PeerId, SwarmBuilder, gossipsub, mdns, swarm::SwarmEvent, tcp, tls, yamux,
 };
 use std::time::Duration;
-use std::{collections::BTreeMap, error::Error};
+use std::{collections::HashMap, error::Error};
 use tokio::io::{self, AsyncBufReadExt};
 
 #[derive(libp2p::swarm::NetworkBehaviour)]
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	let mut stdin = io::BufReader::new(io::stdin()).lines();
 	// let mut connected_peers: i32 = 0;
-	let mut connected_peers: BTreeMap<PeerId, u32> = BTreeMap::new();
+	let mut connected_peers: HashMap<PeerId, u32> = HashMap::new();
 
 	loop {
 		tokio::select! {

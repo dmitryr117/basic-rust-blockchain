@@ -8,7 +8,7 @@ use libp2p::{Multiaddr, PeerId, Swarm, SwarmBuilder, mdns, tcp, tls, yamux};
 
 use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::BTreeMap, error::Error};
+use std::{collections::HashMap, error::Error};
 use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
@@ -35,7 +35,7 @@ pub struct P2PConnection {
 	pub keypair: Keypair,
 	pub peer_id: PeerId,
 	pub swarm: Mutex<Swarm<P2PBehaviour>>,
-	pub connected_peers: RwLock<BTreeMap<PeerId, u32>>,
+	pub connected_peers: RwLock<HashMap<PeerId, u32>>,
 	pub event_tx: mpsc::Sender<SwarmEventType>,
 }
 
@@ -98,7 +98,7 @@ impl P2PConnection {
 
 		let (event_tx, _) = mpsc::channel(32);
 
-		let connected_peers: BTreeMap<PeerId, u32> = BTreeMap::new();
+		let connected_peers: HashMap<PeerId, u32> = HashMap::new();
 
 		Ok(Self {
 			keypair,
