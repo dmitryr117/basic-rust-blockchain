@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::constants::{U32_SIZE, UUID_SIZE};
 use crate::traits::BinarySerializable;
@@ -17,8 +17,8 @@ pub struct Transaction {
 	pub id: Uuid,
 	pub amount: u32,
 	pub input: TransactionInput,
-	#[serde_as(as = "HashMap<serde_with::hex::Hex, _>")]
-	pub output_map: HashMap<Vec<u8>, u32>,
+	#[serde_as(as = "BTreeMap<serde_with::hex::Hex, _>")]
+	pub output_map: BTreeMap<Vec<u8>, u32>,
 }
 
 impl Transaction {
@@ -60,8 +60,8 @@ impl Transaction {
 		sender_wallet: &Wallet,
 		recipient_pk: &[u8],
 		amount: u32,
-	) -> HashMap<Vec<u8>, u32> {
-		let mut output_map: HashMap<Vec<u8>, u32> = HashMap::new();
+	) -> BTreeMap<Vec<u8>, u32> {
+		let mut output_map: BTreeMap<Vec<u8>, u32> = BTreeMap::new();
 
 		output_map.insert(recipient_pk.to_vec().clone(), amount);
 		output_map.insert(
@@ -75,8 +75,8 @@ impl Transaction {
 	pub fn create_reward_output_map(
 		recipient_pk: &[u8],
 		amount: u32,
-	) -> HashMap<Vec<u8>, u32> {
-		let mut output_map: HashMap<Vec<u8>, u32> = HashMap::new();
+	) -> BTreeMap<Vec<u8>, u32> {
+		let mut output_map: BTreeMap<Vec<u8>, u32> = BTreeMap::new();
 
 		output_map.insert(recipient_pk.to_vec().clone(), amount);
 
@@ -235,7 +235,7 @@ impl BinarySerializable for Transaction {
 
 		let output_map_bytes: Vec<u8> =
 			bytes[cursor..cursor + output_map_size as usize].try_into()?;
-		let (output_map, _bytes): (HashMap<Vec<u8>, u32>, usize) =
+		let (output_map, _bytes): (BTreeMap<Vec<u8>, u32>, usize) =
 			bincode::decode_from_slice(&output_map_bytes, config)?;
 
 		Ok(Self { id, amount, input, output_map })

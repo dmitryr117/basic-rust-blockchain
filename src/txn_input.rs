@@ -2,7 +2,7 @@ use bincode::{Decode, Encode};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::{utils::output_map_to_bytes, wallet::Wallet};
 
@@ -22,7 +22,7 @@ pub struct TransactionInput {
 impl TransactionInput {
 	pub fn new(
 		sender_wallet: &Wallet,
-		output_map: &HashMap<Vec<u8>, u32>,
+		output_map: &BTreeMap<Vec<u8>, u32>,
 	) -> Self {
 		let timestamp = Utc::now().timestamp_millis();
 		let output_bytes = output_map_to_bytes(&output_map);

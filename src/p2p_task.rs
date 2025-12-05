@@ -133,7 +133,7 @@ pub fn start_p2p_task(
 							if let Ok(topic_enum) = TopicEnum::from_str(&topic) {
 								match topic_enum {
 									TopicEnum::Blockchain => {
-										// chain replacement.
+										// chain replacement
 										if let Ok(new_chain) = Blockchain::from_bytes(&message.data) {
 											let mut blockchain_write = blockchain.write().await;
 											match blockchain_write.replace_chain(new_chain.chain) {

@@ -2,7 +2,7 @@ use libp2p::identity::Keypair;
 use libp2p::{PeerId, Swarm, SwarmBuilder, gossipsub, mdns, tcp, tls, yamux};
 use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::HashMap, error::Error};
+use std::{collections::BTreeMap, error::Error};
 use strum::{EnumString, IntoEnumIterator};
 use strum_macros::{Display, EnumIter};
 use tokio::sync::{Mutex, OnceCell, RwLock};
@@ -25,7 +25,7 @@ pub struct P2PConnection {
 	pub keypair: Keypair,
 	pub peer_id: PeerId,
 	pub swarm: Mutex<Swarm<P2PBehaviour>>,
-	pub connected_peers: RwLock<HashMap<PeerId, u32>>,
+	pub connected_peers: RwLock<BTreeMap<PeerId, u32>>,
 }
 
 impl P2PConnection {
@@ -86,7 +86,7 @@ impl P2PConnection {
 		swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 		swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
 
-		let connected_peers: HashMap<PeerId, u32> = HashMap::new();
+		let connected_peers: BTreeMap<PeerId, u32> = BTreeMap::new();
 
 		Ok(Self {
 			keypair,

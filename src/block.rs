@@ -74,13 +74,13 @@ impl BlockTr<Block> for Block {
 		// 		txn_bytes.extend(data_bytes);
 		// 	}
 		// });
-		let txn_bytes = Self::data_to_bytes(&data);
+		let data_bytes = Self::data_to_bytes(&data);
 
 		loop {
 			nonce += 1;
 			ms_time = Utc::now().timestamp_millis();
 			new_hash =
-				cryptohash(&txn_bytes, &last_hash, ms_time, nonce, difficulty);
+				cryptohash(&data_bytes, &last_hash, ms_time, nonce, difficulty);
 			// let sector = new_hash.get(0..difficulty).unwrap();
 			// let comparator: Vec<u8> = vec![0; difficulty as usize];
 
@@ -88,6 +88,15 @@ impl BlockTr<Block> for Block {
 				break;
 			}
 		}
+		println!("Set valid:");
+		println!("{:?}", data_bytes);
+		println!("{:#?}", data);
+		// println!("{:#?}", last_hash);
+		// println!("{:#?}", ms_time);
+		// println!("{:#?}", nonce);
+		// println!("{:#?}", difficulty);
+		// println!("{:?}", new_hash);
+
 		Self::new(
 			ms_time,
 			last_block.hash.clone(),

@@ -145,7 +145,7 @@ mod transaction_tests {
 		}
 
 		#[test]
-		fn transaction_invalid_hashmap() {
+		fn transaction_invalid_output_map() {
 			let (sender_wallet, recipient_wallet, amount) = before_each();
 
 			let mut transaction = Transaction::new(

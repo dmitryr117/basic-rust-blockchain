@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use axum::{Json, Router, extract::State, routing::get};
 use uuid::Uuid;
@@ -11,7 +11,7 @@ pub fn routes() -> Router<AppState> {
 
 async fn get_transaction_pool(
 	State(state): State<AppState>,
-) -> Json<HashMap<Uuid, Transaction>> {
+) -> Json<BTreeMap<Uuid, Transaction>> {
 	let transaction_pool = state.transaction_pool.read().await;
 	Json(transaction_pool.transaction_map.to_owned())
 }

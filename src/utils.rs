@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use sha3::{Digest, Sha3_256};
 
@@ -23,7 +23,7 @@ pub fn cryptohash(
 	hasher.finalize().to_vec()
 }
 
-pub fn output_map_to_bytes(output_map: &HashMap<Vec<u8>, u32>) -> Vec<u8> {
+pub fn output_map_to_bytes(output_map: &BTreeMap<Vec<u8>, u32>) -> Vec<u8> {
 	let config = bincode::config::standard();
 	bincode::encode_to_vec(output_map, config)
 		.expect("Output bytes failed to encode.")
