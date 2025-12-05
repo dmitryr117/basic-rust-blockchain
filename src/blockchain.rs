@@ -35,8 +35,6 @@ impl Blockchain {
 			return false;
 		}
 
-		println!("Chain len: {}", chain.len());
-
 		for idx in 0..chain.len() {
 			if idx == 0 {
 				continue;
@@ -70,20 +68,7 @@ impl Blockchain {
 				difficulty,
 			);
 
-			println!("Check valid:");
-			println!("{:?}", data_bytes);
-			println!("{:#?}", data);
-
-			// println!("{:#?}", last_hash);
-			// println!("{:#?}", timestamp);
-			// println!("{:#?}", nonce);
-			// println!("{:#?}", difficulty);
-
-			println!("{:?}", hash);
-			println!("{:?}", validated_hash);
-
 			if *hash != validated_hash {
-				println!("Invalid hash.");
 				return false;
 			}
 		}

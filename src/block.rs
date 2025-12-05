@@ -88,14 +88,6 @@ impl BlockTr<Block> for Block {
 				break;
 			}
 		}
-		println!("Set valid:");
-		println!("{:?}", data_bytes);
-		println!("{:#?}", data);
-		// println!("{:#?}", last_hash);
-		// println!("{:#?}", ms_time);
-		// println!("{:#?}", nonce);
-		// println!("{:#?}", difficulty);
-		// println!("{:?}", new_hash);
 
 		Self::new(
 			ms_time,
