@@ -15,7 +15,7 @@ use crate::{
 pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<Transaction>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>) -> Result<(), String>;
-	fn valid_transaction_data(&self, blockchain: &Blockchain) -> bool;
+	fn valid_transaction_data(&self, blockchain: &Vec<Block>) -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -96,12 +96,17 @@ impl BlockchainTr for Blockchain {
 		if !Blockchain::is_valid_chain(&new_chain) {
 			return Err(format!("New chain is Invalid!"));
 		}
+
+		if !self.valid_transaction_data(&new_chain) {
+			return Err(format!("New chain data is Invalid!"));
+		}
+
 		self.chain = new_chain;
 		Ok(())
 	}
 
-	fn valid_transaction_data(&self, blockchain: &Blockchain) -> bool {
-		for (idx, block) in blockchain.chain.iter().enumerate() {
+	fn valid_transaction_data(&self, chain: &Vec<Block>) -> bool {
+		for (idx, block) in chain.iter().enumerate() {
 			if idx == 0 {
 				continue;
 			}

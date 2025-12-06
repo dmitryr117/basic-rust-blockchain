@@ -90,7 +90,11 @@ mod chain_starts_with_genesis_block {
 
 mod chain_replacement {
 	use super::*;
-	use cryptochain::blockchain::{Blockchain, BlockchainTr};
+	use cryptochain::{
+		blockchain::{Blockchain, BlockchainTr},
+		wallet::Wallet,
+	};
+	use libp2p::identity::Keypair;
 	use pretty_assertions::assert_eq;
 
 	fn before_each() -> (Blockchain, Blockchain) {
@@ -153,21 +157,14 @@ mod chain_replacement {
 	fn when_chain_is_longer_and_valid_replace() {
 		let (mut blockchain, mut new_chain) = before_each();
 
-		new_chain.add_block(vec![Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			10,
-		)]);
-		new_chain.add_block(vec![Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			20,
-		)]);
-		new_chain.add_block(vec![Transaction::new_reward_txn(
-			&REWARD_INPUT_ADDRESS,
-			&REWARD_INPUT_ADDRESS,
-			30,
-		)]);
+		let wallet_1 = Wallet::new(&Keypair::generate_ed25519());
+		let wallet_2 = Wallet::new(&Keypair::generate_ed25519());
+
+		let txn = Transaction::new(&wallet_1, &wallet_2.public_key, 50);
+		// need to chack might be an attack vector.
+		new_chain.add_block(vec![txn.clone()]);
+		new_chain.add_block(vec![txn.clone()]);
+		new_chain.add_block(vec![txn.clone()]);
 
 		blockchain
 			.replace_chain(new_chain.chain.clone())
@@ -211,7 +208,7 @@ mod test_valid_txn_data {
 	#[test]
 	fn test_txn_data_is_valid() {
 		let (blockchain, new_chain, _wallet, _txn, _reward_txn) = before_each();
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 
 		assert_eq!(true, valid);
 	}
@@ -222,7 +219,7 @@ mod test_valid_txn_data {
 			before_each();
 		new_chain.add_block(vec![txn, reward_txn.clone(), reward_txn]);
 
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 
 		assert_eq!(false, valid);
 	}
@@ -234,7 +231,7 @@ mod test_valid_txn_data {
 		txn.output_map.insert(wallet.public_key, 999_999);
 		new_chain.add_block(vec![txn, reward_txn]);
 
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 		assert_eq!(false, valid);
 	}
 
@@ -247,7 +244,7 @@ mod test_valid_txn_data {
 			.insert(wallet.public_key, 999_999);
 		new_chain.add_block(vec![txn, reward_txn]);
 
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 
 		assert_eq!(false, valid);
 	}
@@ -274,7 +271,7 @@ mod test_valid_txn_data {
 
 		new_chain.add_block(vec![evil_txn, reward_txn]);
 
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 
 		assert_eq!(false, valid);
 	}
@@ -291,7 +288,7 @@ mod test_valid_txn_data {
 			reward_txn,
 		]);
 
-		let valid = blockchain.valid_transaction_data(&new_chain);
+		let valid = blockchain.valid_transaction_data(&new_chain.chain);
 
 		assert_eq!(false, valid);
 	}
