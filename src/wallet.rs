@@ -119,9 +119,8 @@ impl Wallet {
 	) -> Result<Transaction, &str> {
 		if blockchain.chain.len() > 1 {
 			self.balance =
-				Wallet::calculate_balance(&blockchain.chain, &recipient);
+				Wallet::calculate_balance(&blockchain.chain, &self.public_key);
 		}
-
 		if self.balance < amount {
 			return Err("Insufficient ballance.");
 		}
