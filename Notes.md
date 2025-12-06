@@ -17,3 +17,5 @@ Because from_bytes is impossible to deal with because hash_map can be inconsiste
 
 - Need to encode - decode - hash - unhash. for any data that has to be hashed to avoid issues such as
 HashMap out of order problems.
+
+Still have issue with output map generation. It does not use calculated wallet balance, but initial balance somewhere.

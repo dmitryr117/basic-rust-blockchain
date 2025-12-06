@@ -1,6 +1,7 @@
 pub mod blocks;
 pub mod transact;
 pub mod transaction_pool;
+pub mod wallet;
 
 use std::sync::Arc;
 
@@ -40,6 +41,7 @@ pub fn start_http_server_task(
 					.merge(blocks::routes())
 					.merge(transact::routes())
 					.merge(transaction_pool::routes())
+					.merge(wallet::routes())
 					.route("/", get(hello_world)),
 			)
 			.with_state(state);
