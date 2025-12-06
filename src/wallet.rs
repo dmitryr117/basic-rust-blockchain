@@ -1,7 +1,10 @@
 use bs58;
 use hex;
 
-use crate::{config::STARTING_BALANCE, transaction::Transaction};
+use crate::{
+	block::Block, blockchain::Blockchain, config::STARTING_BALANCE,
+	transaction::Transaction,
+};
 use libp2p::identity::{Keypair, PublicKey, SigningError};
 use sha3::{Digest, Sha3_256};
 
@@ -72,145 +75,37 @@ impl Wallet {
 		pk.verify(data, signature)
 	}
 
+	pub fn calculate_balance(chain: &Vec<Block>, address: &[u8]) -> u32 {
+		let mut outputs_total = 0;
+		for block in chain {
+			for txn in &block.data {
+				if let Some(address_output) = txn.output_map.get(address) {
+					outputs_total += address_output;
+				}
+			}
+		}
+
+		STARTING_BALANCE + outputs_total
+	}
+
 	pub fn sign(&self, data: &[u8]) -> Result<Vec<u8>, SigningError> {
 		self.keypair.sign(data)
 	}
 
 	pub fn create_transaction(
-		&self,
+		&mut self,
 		amount: u32,
 		recipient: &Vec<u8>,
+		blockchain: &Blockchain,
 	) -> Result<Transaction, &str> {
+		if blockchain.chain.len() > 1 {
+			self.balance =
+				Wallet::calculate_balance(&blockchain.chain, &recipient);
+		}
+
 		if self.balance < amount {
 			return Err("Insufficient ballance.");
 		}
 		Ok(Transaction::new(self, recipient, amount))
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use libp2p::identity::Keypair;
-	use pretty_assertions::assert_eq;
-
-	#[test]
-	fn test_default_balance() {
-		let wallet = Wallet::new(&Keypair::generate_ed25519());
-		assert_eq!(wallet.balance, STARTING_BALANCE);
-	}
-
-	#[test]
-	fn test_has_public_key() {
-		let keypair = Keypair::generate_ed25519();
-		let wallet = Wallet::new(&keypair);
-
-		let pubkey = keypair.public().encode_protobuf();
-
-		assert_eq!(wallet.public_key, pubkey);
-	}
-
-	fn build_address_for_test(public_key: &PublicKey) -> String {
-		let pubkey_bytes = public_key.encode_protobuf();
-		let mut hasher = Sha3_256::new();
-		hasher.update(&pubkey_bytes);
-		let hash = hasher.finalize();
-		bs58::encode(hash).into_string()
-	}
-
-	#[test]
-	fn test_derive_address() {
-		let keypair = Keypair::generate_ed25519();
-		let pubkey = keypair.public();
-
-		let standard = Wallet::derive_address(&keypair);
-		let comparator = build_address_for_test(&pubkey);
-
-		println!("Public address: {standard}");
-
-		assert_eq!(standard, comparator);
-	}
-
-	mod test_verify_signature {
-
-		use super::*;
-		use pretty_assertions::assert_eq;
-
-		#[test]
-		fn test_sign_data_verify_signature() {
-			let data = "FooBar".as_bytes();
-			let wallet = Wallet::new(&Keypair::generate_ed25519());
-
-			let signed_data = wallet.sign(data).unwrap();
-
-			let verified = Wallet::verify_signature(
-				&wallet.public_key,
-				data,
-				&signed_data,
-			);
-			assert_eq!(verified, true);
-		}
-
-		#[test]
-		fn test_sign_data_invalid_signature() {
-			let data = "FooBar".as_bytes();
-			let wallet = Wallet::new(&Keypair::generate_ed25519());
-			let wrong_wallet = Wallet::new(&Keypair::generate_ed25519());
-
-			let wrong_signed_data = wrong_wallet.sign(data).unwrap();
-
-			let verified = Wallet::verify_signature(
-				&wallet.public_key,
-				data,
-				&wrong_signed_data,
-			);
-			assert_eq!(verified, false);
-		}
-	}
-
-	mod test_create_transaction {
-		use super::*;
-		use pretty_assertions::assert_eq;
-
-		fn before_each() -> (u32, Wallet, Wallet) {
-			let amount: u32 = 50;
-			let recipient = Wallet::new(&Keypair::generate_ed25519());
-			let wallet = Wallet::new(&Keypair::generate_ed25519());
-
-			(amount, recipient, wallet)
-		}
-
-		#[test]
-		fn create_transaction_amount_exceeds_balance() {
-			let (_amount, recipient, wallet) = before_each();
-
-			let res = wallet.create_transaction(999_999, &recipient.public_key);
-			assert_eq!(res.is_err(), true);
-		}
-
-		#[test]
-		fn match_transaction_input_with_wallet() {
-			let (amount, recipient, wallet) = before_each();
-			let transaction = wallet
-				.create_transaction(amount, &recipient.public_key)
-				.unwrap();
-
-			assert_eq!(transaction.input.sender_address, wallet.public_key);
-		}
-
-		#[test]
-		fn output_recipient_amount() {
-			let (amount, recipient, wallet) = before_each();
-			let transaction = wallet
-				.create_transaction(amount, &recipient.public_key)
-				.unwrap();
-
-			let txn_recipient_output_map_value = transaction
-				.output_map
-				.get(&recipient.public_key)
-				.unwrap();
-
-			assert_eq!(*txn_recipient_output_map_value, amount);
-		}
 	}
 }

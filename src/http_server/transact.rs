@@ -40,7 +40,7 @@ async fn transact(
 ) -> Result<Json<Transaction>, (StatusCode, String)> {
 	// Transaction signing has to happen on client when system becomes operational.
 	// Transactions should be only submitted via API. But will mod it later.
-	let wallet = state.wallet.read().await;
+	let mut wallet = state.wallet.write().await;
 	let amount = payload.amount.expect("Unable to load amount.");
 	let recipient_hex_address = payload
 		.recipient
@@ -69,8 +69,12 @@ async fn transact(
 			}
 		}
 		None => {
-			let txn_result =
-				wallet.create_transaction(amount, &recipient_vec_address);
+			let blockchain = state.blockchain.read().await;
+			let txn_result = wallet.create_transaction(
+				amount,
+				&recipient_vec_address,
+				&blockchain,
+			);
 			match txn_result {
 				Ok(transaction) => {
 					transaction_pool.set_transaction(transaction.clone());
