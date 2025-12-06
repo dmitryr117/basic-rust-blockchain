@@ -193,4 +193,89 @@ mod test_calculate_balance {
 
 		assert_eq!(wallet_balance, expected_wallet_balance);
 	}
+
+	mod test_avoid_double_count {
+		use super::*;
+		use cryptochain::{
+			config::REWARD_INPUT_ADDRESS, transaction::Transaction,
+		};
+		use pretty_assertions::assert_eq;
+
+		#[test]
+		fn test_balance_and_wallet_made_transaction() {
+			let (
+				mut blockchain,
+				mut sender_1,
+				_sender_2,
+				recipient_1,
+				_recipient_2,
+			) = super::before_each();
+
+			let recent_txn = sender_1
+				.create_transaction(50, &recipient_1.public_key, &blockchain)
+				.unwrap();
+
+			blockchain.add_block(vec![recent_txn.clone()]);
+
+			let balance = Wallet::calculate_balance(
+				&blockchain.chain,
+				&sender_1.public_key,
+			);
+
+			let expected = recent_txn
+				.output_map
+				.get(&sender_1.public_key)
+				.unwrap();
+
+			assert_eq!(*expected, balance);
+		}
+
+		#[test]
+		fn test_outputs_next_to_recent() {
+			let (
+				mut blockchain,
+				mut wallet_1,
+				mut wallet_2,
+				recipient_1,
+				_recipient_2,
+			) = super::before_each();
+
+			let recent_txn = wallet_1
+				.create_transaction(100, &recipient_1.public_key, &blockchain)
+				.unwrap();
+
+			let same_block_txn = Transaction::new_reward_txn(
+				&wallet_1.public_key,
+				&REWARD_INPUT_ADDRESS,
+				50,
+			);
+			blockchain
+				.add_block(vec![recent_txn.clone(), same_block_txn.clone()]);
+
+			let next_block_transaction = wallet_2
+				.create_transaction(75, &wallet_1.public_key, &blockchain)
+				.unwrap();
+			blockchain.add_block(vec![next_block_transaction.clone()]);
+
+			let wallet_balance = Wallet::calculate_balance(
+				&blockchain.chain,
+				&wallet_1.public_key,
+			);
+
+			let mut expected_balance = *recent_txn
+				.output_map
+				.get(&wallet_1.public_key)
+				.unwrap();
+			expected_balance += *same_block_txn
+				.output_map
+				.get(&wallet_1.public_key)
+				.unwrap();
+			expected_balance += *next_block_transaction
+				.output_map
+				.get(&wallet_1.public_key)
+				.unwrap();
+
+			assert_eq!(expected_balance, wallet_balance);
+		}
+	}
 }

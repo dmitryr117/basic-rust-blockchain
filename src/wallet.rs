@@ -76,16 +76,35 @@ impl Wallet {
 	}
 
 	pub fn calculate_balance(chain: &Vec<Block>, address: &[u8]) -> u32 {
+		let mut conducted_txn = false;
 		let mut outputs_total = 0;
-		for block in chain {
+
+		let mut block_iter = chain.iter().rev().peekable();
+
+		while let Some(block) = block_iter.next() {
+			if block_iter.peek().is_none() {
+				break;
+			}
 			for txn in &block.data {
+				if txn.input.sender_address == address {
+					conducted_txn = true;
+				}
+
 				if let Some(address_output) = txn.output_map.get(address) {
 					outputs_total += address_output;
 				}
 			}
+
+			if conducted_txn {
+				break;
+			}
 		}
 
-		STARTING_BALANCE + outputs_total
+		if conducted_txn {
+			outputs_total
+		} else {
+			STARTING_BALANCE + outputs_total
+		}
 	}
 
 	pub fn sign(&self, data: &[u8]) -> Result<Vec<u8>, SigningError> {
