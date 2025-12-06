@@ -1,20 +1,21 @@
+use std::collections::BTreeSet;
+
+use uuid::Uuid;
+
 use crate::{
 	block::{Block, BlockTr},
+	config::{MINING_REWARD, REWARD_INPUT_ADDRESS},
 	traits::BinarySerializable,
 	transaction::Transaction,
 	utils::cryptohash,
+	wallet::Wallet,
 };
 
 // Also nbeed to load chain from file system if it exists.
 pub trait BlockchainTr {
 	fn add_block(&mut self, data: Vec<Transaction>);
 	fn replace_chain(&mut self, new_chain: Vec<Block>) -> Result<(), String>;
-	// fn to_bytes(
-	// 	chain: &Vec<Block>,
-	// ) -> Result<Vec<u8>, bincode::error::EncodeError>;
-	// fn from_bytes(
-	// 	bytes: &[u8],
-	// ) -> Result<Vec<Block>, bincode::error::DecodeError>;
+	fn valid_transaction_data(&self, blockchain: &Blockchain) -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +98,55 @@ impl BlockchainTr for Blockchain {
 		}
 		self.chain = new_chain;
 		Ok(())
+	}
+
+	fn valid_transaction_data(&self, blockchain: &Blockchain) -> bool {
+		for (idx, block) in blockchain.chain.iter().enumerate() {
+			if idx == 0 {
+				continue;
+			}
+			let mut reward_txn_count = 0;
+			let mut txn_set: BTreeSet<Uuid> = BTreeSet::new();
+
+			for txn in &block.data {
+				if txn.input.sender_address == REWARD_INPUT_ADDRESS {
+					reward_txn_count += 1;
+					if reward_txn_count > 1 {
+						eprintln!("Miner reward exceeds limit.");
+						return false;
+					}
+
+					if *txn.output_map.values().next().unwrap() != MINING_REWARD
+					{
+						eprintln!("Miner reward amount invalid.");
+						return false;
+					}
+				} else {
+					if !txn.is_valid() {
+						eprintln!("Invalid transaction");
+						return false;
+					}
+					let true_balance = Wallet::calculate_balance(
+						&self.chain,
+						&txn.input.sender_address,
+					);
+
+					println!("TB: {}, {}", true_balance, txn.input.amount);
+
+					if txn.input.amount != true_balance {
+						eprintln!("Invalid input amount.");
+						return false;
+					}
+
+					if let Some(_) = txn_set.get(&txn.id) {
+						return false;
+					} else {
+						txn_set.insert(txn.id);
+					}
+				}
+			}
+		}
+		true
 	}
 }
 
